@@ -279,7 +279,9 @@ int main(int argc, char** argv) try
 			if (count == 10) {
 				ZActionModule::instance()->sendPacket(2, 0, 0, 0, true );
 				std::this_thread::sleep_for(std::chrono::milliseconds(50));
+				cout << "go to next state" << endl;
 				break;
+				
 			}
 		
 		}
@@ -306,14 +308,15 @@ int main(int argc, char** argv) try
 
 	}
 
-	return EXIT_SUCCESS;
-
+	
+	
 	count = 0;
 	// 2nd While to intercept the ball
-
+	
      while (cvGetWindowHandle(window_name))
     // for(int i = 0; i<60 && cvGetWindowHandle(window_name) ; i++)
     {
+		
         auto start_time = clock();
         // auto start_time_1 = clock();
 
