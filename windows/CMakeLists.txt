@@ -20,14 +20,20 @@ SET(INCLUDE_DIRS ${CMAKE_CURRENT_LIST_DIR}/include
 				 ${CMAKE_CURRENT_LIST_DIR}/samples
                  ${CMAKE_CURRENT_LIST_DIR}/third-party/glfw-imgui/include
                  ${CMAKE_CURRENT_LIST_DIR}/third-party/
-                 ${CMAKE_CURRENT_LIST_DIR}/actionmodule.h
-                 ${CMAKE_CURRENT_LIST_DIR}/singleton.hpp
+                 ${CMAKE_CURRENT_LIST_DIR}/include/actionmodule.h
+                 ${CMAKE_CURRENT_LIST_DIR}/include/kalmanfilterdir.h
+                 ${CMAKE_CURRENT_LIST_DIR}/include/kalmanfilter.h
+                 ${CMAKE_CURRENT_LIST_DIR}/include/singleton.hpp
+                 ${CMAKE_CURRENT_LIST_DIR}/include/matrix2d.h
                  ${QT_INCLUDE}
                  )
 
 # 源文件
 file(GLOB SOURCE ${CMAKE_CURRENT_LIST_DIR}/InterceptionSingleThread.cpp
-                 ${CMAKE_CURRENT_LIST_DIR}/actionmodule.cpp
+                 ${CMAKE_CURRENT_LIST_DIR}/include/actionmodule.cpp
+                 ${CMAKE_CURRENT_LIST_DIR}/include/kalmanfilterdir.cpp
+                 ${CMAKE_CURRENT_LIST_DIR}/include/kalmanfilter.cpp
+                 ${CMAKE_CURRENT_LIST_DIR}/include/matrix2d.cpp
                  )
 
 # 链接文件

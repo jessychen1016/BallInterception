@@ -17,6 +17,8 @@
 #include <chrono>
 #include <thread>
 #include "actionmodule.h"
+#include "kalmanfilterdir.h"
+#include "kalmanfilter.h"
 #define MAX_THREADS 8
 
 
@@ -29,11 +31,12 @@ int mat_columns;
 int mat_rows;
 int length_to_mid;
 double alpha=0;
-
+KalmanFilterDir kalman_filter_dir;
+KalmanFilter kalman_filter;
 double depth_length_coefficient(double depth){
     
     double length;
-    length = 48.033*depth+5.4556;
+    length = 0.48033*depth+5.4556;
     return length;
 
 }
@@ -143,12 +146,15 @@ int main(int argc, char** argv) try
     double y_vel = 0;
     double x_vel = 0;
     double velocity;
-    double alphaset[5] = {0};
+	double alphaset[2][10] = { 0 };
     double alpha_mean=0;
     double move_distance=0;
     double first_magic_distance=5;
     int count = 0;
     int magic_distance_flag = 1;
+	int frame_number_before_decision = 10;
+	double magic_distance;
+	double lenght_to_midline_OFFSET;
     string move_direction ;
     // int para1 = 200 ,para2 = 50;
 
@@ -188,7 +194,7 @@ int main(int argc, char** argv) try
 
 
 		GaussianBlur(color_mat, Gcolor_mat, Size(11, 11), 0);
-		GaussianBlur(depth_mat, Gdepth_mat, Size(13, 13), 0);
+		GaussianBlur(depth_mat, Gdepth_mat, Size(9,9), 0);
 
 
 		// Crop both color and depth frames
@@ -205,10 +211,10 @@ int main(int argc, char** argv) try
 													 //因为我们读取的是彩色图，直方图均衡化需要在HSV空间做
 
 		split(imgHSV, hsvSplit);
-		cout << hsvSplit.size() << endl;
-		cout << "11111111111111111111" << endl;
+		//cout << hsvSplit.size() << endl;
+		
 		equalizeHist(hsvSplit[2], hsvSplit[2]);
-		cout << "00000000000000000" << endl;
+		
 		merge(hsvSplit, imgHSV);
 		Mat imgThresholded;
 
@@ -263,12 +269,15 @@ int main(int argc, char** argv) try
 		}
 		Point moment_center(moment.m10 / moment.m00, moment.m01 / moment.m00);
 		depth_m = Gdepth_mat.at<double>((int)moment.m01 / moment.m00, (int)moment.m10 / moment.m00);
-		double magic_distance = depth_m[0] * 1.062;
-
+		magic_distance = depth_m[0] * 1.062 *100;
+        // magic_distance = kalman_filter_dir.update(magic_distance);
 		velocity = sqrt(y_vel*y_vel + x_vel*x_vel);
 
 		// calculate length to midline
-		length_to_mid = (moment.m10 / moment.m00 - 200)*depth_length_coefficient(magic_distance) / 320;
+		length_to_mid = (moment.m10 / moment.m00 - 160)*depth_length_coefficient(magic_distance) / 320;
+		last_x_meter = abs(length_to_mid);
+		cout << "length_to_mid " << length_to_mid <<endl;
+		cout << "Trying to locate the ball " << endl;
 		if (abs(length_to_mid) <= 2) {
 		
 			ZActionModule::instance()->sendPacket(2, 0, 0, 0);
@@ -308,17 +317,21 @@ int main(int argc, char** argv) try
 
 	}
 
-	
+	ZActionModule::instance()->sendPacket(2, 0, 0, 0, true);
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 	
 	count = 0;
 	// 2nd While to intercept the ball
-	
-     while (cvGetWindowHandle(window_name))
+	int count_for_while2 = 0;
+	last_x_meter = magic_distance *100;
+	last_y_meter = length_to_mid;
+	lenght_to_midline_OFFSET = length_to_mid;
+	cout << "OFFSET =" << lenght_to_midline_OFFSET << endl;
+    while (cvGetWindowHandle(window_name))
     // for(int i = 0; i<60 && cvGetWindowHandle(window_name) ; i++)
     {
 		
         auto start_time = clock();
-        // auto start_time_1 = clock();
 
         // Wait for the next set of frames
         auto data = pipe.wait_for_frames();
@@ -347,9 +360,9 @@ int main(int argc, char** argv) try
         Mat Gdepth_mat;
 
 
-        GaussianBlur(color_mat,Gcolor_mat,Size(11,11),0);
-        GaussianBlur(depth_mat,Gdepth_mat,Size(13,13),0);
-        
+        GaussianBlur(color_mat,Gcolor_mat,Size(9,9),0);
+        GaussianBlur(depth_mat,Gdepth_mat,Size(3,3),0);
+		//Gdepth_mat = depth_mat;
 
         // Crop both color and depth frames
         Gcolor_mat = Gcolor_mat(crop);
@@ -365,10 +378,10 @@ int main(int argc, char** argv) try
 													 //因为我们读取的是彩色图，直方图均衡化需要在HSV空间做
 
 		split(imgHSV, hsvSplit);
-		cout << hsvSplit.size() << endl;
-		cout << "11111111111111111111" << endl;
+		//cout << hsvSplit.size() << endl;
+		
 		equalizeHist(hsvSplit[2], hsvSplit[2]);
-		cout << "00000000000000000" << endl;
+		
 		merge(hsvSplit, imgHSV);
         Mat imgThresholded;
     
@@ -383,7 +396,7 @@ int main(int argc, char** argv) try
     
         imshow("Thresholded Image", imgThresholded); //show the thresholded image
     //   imshow("Original", Gcolor_mat); //show the original image
-    
+		
         char key = (char) waitKey(1);
         // auto end_time_1 = clock();
         // cout<<"time before contour"<<1000.000*(end_time_1-start_time_1)/CLOCKS_PER_SEC<<std::endl;
@@ -423,11 +436,27 @@ int main(int argc, char** argv) try
         }
         Point moment_center (moment.m10 / moment.m00, moment.m01/moment.m00);
         depth_m = Gdepth_mat.at<double>((int)moment.m01 / moment.m00,(int)moment.m10/moment.m00);
-        double magic_distance = depth_m[0] * 1.062;
-		first_magic_distance = magic_distance;
+        magic_distance = depth_m[0] * 1.062* 100;
+        // calculate length to midline
+        if (count_for_while2 == 0) {
+            length_to_mid = (moment.m10 / moment.m00 - 200)*depth_length_coefficient(magic_distance) / 320;
+            lenght_to_midline_OFFSET = length_to_mid;
+            first_magic_distance = magic_distance;
+            count_for_while2 += 1;
+            cout << "lenghtOFFSET　= " << lenght_to_midline_OFFSET << endl;
+        }
+        length_to_mid = (moment.m10 / moment.m00-200)*depth_length_coefficient(magic_distance)/320 - lenght_to_midline_OFFSET;
+        
+		
+
+        //KalmanFilter
+        magic_distance = kalman_filter.update(magic_distance, length_to_mid)(0,0);
+        length_to_mid = kalman_filter.update(magic_distance, length_to_mid)(1,0);
+		cout << endl << "length to midline =" << length_to_mid << "    ";
+        // imshow
         std::ostringstream ss;
         ss << " Ball Detected ";
-        ss << std::setprecision(3) << magic_distance << " meters away" ;
+        ss << std::setprecision(3) << magic_distance << " centimeters away" ;
         String conf(ss.str());
         // distance[i]=magic_distance;
 
@@ -442,8 +471,14 @@ int main(int argc, char** argv) try
         Scalar(255, 255, 255), CV_FILLED);
         putText(Gcolor_mat, ss.str(), center,
         FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0,0,0));
-
-        velocity = sqrt(y_vel*y_vel + x_vel*x_vel);
+		/*if (count_for_while2 <= 1) {
+			count_for_while2 += 1;
+			velocity = 0;
+		}
+		else {
+			velocity = sqrt(y_vel*y_vel + x_vel*x_vel);
+		}*/
+		
         // velocity window
         ostringstream ss_v;
         ss_v << " The speed is ";
@@ -481,40 +516,56 @@ int main(int argc, char** argv) try
         putText(Gcolor_mat, ss_move_direction.str(), center_move_direction,
                 FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0,0,0));
         
-
-
-
-        // calculate length to midline
-        length_to_mid = (moment.m10 / moment.m00-200)*depth_length_coefficient(magic_distance)/320;
-        cout << endl<<"length to midline ="<<length_to_mid<<"    ";
-            
         imshow(window_name, Gcolor_mat);
         if (waitKey(1) >= 0) break;
         imshow("heatmap", depth_mat);
         this_x_meter = magic_distance;
         this_y_meter = abs(length_to_mid);
         auto end_time = clock();
-        x_vel = (this_x_meter - last_x_meter)/(end_time-start_time)*CLOCKS_PER_SEC;
+        // x_vel = (this_x_meter - last_x_meter)/(end_time-start_time)*CLOCKS_PER_SEC;
+        x_vel = (this_x_meter-last_x_meter)/(end_time-start_time)*CLOCKS_PER_SEC;
+        y_vel = (last_y_meter-this_y_meter)/(end_time-start_time)*CLOCKS_PER_SEC;
+        velocity = sqrt(y_vel*y_vel + x_vel*x_vel);
         // std::cout<<1000.000*(end_time-start_time)/CLOCKS_PER_SEC<<std::endl;
-        cout<<"velocity = "<<x_vel<<"       ";
-        if(x_vel<-2){
+
+
+		if (abs(y_vel)>30) {
+			cout << "x_velocity = " << x_vel << "       ";
+			cout << "y_velocity = " << y_vel << "       ";
+			cout << "velocity = " << velocity << endl;
+		}
+		else {
+			cout << "Yvelocity = " << y_vel << endl;
+		}
+
+        if(abs(y_vel)>30){
             count += 1;
-            alpha = atan(abs(last_y_meter - this_y_meter)/abs(this_x_meter-last_x_meter)/100);
-            cout<<"alpha  ="<<alpha<<"      ";
-            if( count <= 5){
-            alphaset[count-1]=alpha;
-            alpha_mean+= alphaset[count-1];
+            //alpha = atan(abs(last_y_meter - this_y_meter)/abs(this_x_meter-last_x_meter)/100);
+            //cout<<"alpha  ="<<alpha<<"      ";
+            if( count <= frame_number_before_decision){
+				alphaset[0][count - 1] = this_x_meter;
+				alphaset[1][count - 1] = this_y_meter;
+				cout << "X"<<count<<" = "<< this_x_meter;
+				cout << "Y" << count << " = " << this_y_meter;
+            //alphaset[count-1]=alpha;
+            //alpha_mean+= alphaset[count-1];
             }
         }
         
-        if(count ==5 ){
-            alpha_mean /= 5;
+        if(count ==frame_number_before_decision ){
+            //alpha_mean /= 3;
+			alpha_mean = atan(abs(alphaset[1][5] - alphaset[1][0]) / abs(alphaset[0][5] - alphaset[0][0]));
+			alpha_mean += atan(abs(alphaset[1][6] - alphaset[1][1]) / abs(alphaset[0][6] - alphaset[0][1]));
+			alpha_mean = atan(abs(alphaset[1][7] - alphaset[1][2]) / abs(alphaset[0][7] - alphaset[0][2]));
+			alpha_mean = atan(abs(alphaset[1][8] - alphaset[1][3]) / abs(alphaset[0][8] - alphaset[0][3]));
+			alpha_mean = atan(abs(alphaset[1][9] - alphaset[1][4]) / abs(alphaset[0][9] - alphaset[0][4]));
+			alpha_mean /= 5;
             cout<<"alpha mean=  "<<alpha_mean;
-            move_distance = alpha_mean*first_magic_distance*100;
+            move_distance = alpha_mean*first_magic_distance;
             cout<<endl<<"the depth for you to react ="<<first_magic_distance-magic_distance<<endl;
-            count = 6;
+            count = 11;
         }
-        if(length_to_mid < 0 ){
+        if(length_to_mid < -1 ){
             move_direction = "left";
         }
         else{
@@ -526,30 +577,30 @@ int main(int argc, char** argv) try
         cout<<"  move distance ="<<move_distance<<endl;
         cout<<"time in a while"<<1000.000*(end_time-start_time)/CLOCKS_PER_SEC<<endl;
 
-        if(length_to_mid < -0){
-            if(length_to_mid >= -10){
-            ZActionModule::instance()->sendPacket(2, 0, -10, 0, true);
-		    std::this_thread::sleep_for(std::chrono::milliseconds(5));                
-            }
-            else{
-            ZActionModule::instance()->sendPacket(2, 0, -20, 0, true);
-		    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            }
-        }
-        else if(length_to_mid > 0){
-            if(length_to_mid <= 10){
-            ZActionModule::instance()->sendPacket(2, 0, 10, 0, true);
-		    std::this_thread::sleep_for(std::chrono::milliseconds(5));                
-            }
-            else{
-            ZActionModule::instance()->sendPacket(2, 0, 20, 0, true);
-		    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            }
-        }
-        else{
-            ZActionModule::instance()->sendPacket(2, 0, 0, 0, true);
-		    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        }
+      //   if(length_to_mid < -5){
+      //       if(length_to_mid >= -10){
+      //       ZActionModule::instance()->sendPacket(2, 0, -10, 0, true);
+		    // std::this_thread::sleep_for(std::chrono::milliseconds(5));                
+      //       }
+      //       else{
+      //       ZActionModule::instance()->sendPacket(2, 0, -20, 0, true);
+		    // std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      //       }
+      //   }
+      //   else if(length_to_mid > 5){
+      //       if(length_to_mid <= 10){
+      //       ZActionModule::instance()->sendPacket(2, 0, 10, 0, true);
+		    // std::this_thread::sleep_for(std::chrono::milliseconds(5));                
+      //       }
+      //       else{
+      //       ZActionModule::instance()->sendPacket(2, 0, 20, 0, true);
+		    // std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      //       }
+      //   }
+      //   else{
+      //       ZActionModule::instance()->sendPacket(2, 0, 0, 0, true);
+		    // std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      //   }
 
     }
     
