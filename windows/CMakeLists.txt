@@ -34,6 +34,7 @@ file(GLOB SOURCE ${CMAKE_CURRENT_LIST_DIR}/InterceptionSingleThread.cpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/kalmanfilterdir.cpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/kalmanfilter.cpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/matrix2d.cpp
+                 ${CMAKE_CURRENT_LIST_DIR}/include/gotoposition.cpp
                  )
 
 # 链接文件

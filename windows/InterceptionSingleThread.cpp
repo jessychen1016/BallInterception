@@ -12,6 +12,7 @@
 #include <opencv2/core/core.hpp>
 #include <cmath>
 #include <omp.h>
+#include <fstream>
 #include "iostream"
 #include "time.h"
 #include <chrono>
@@ -19,6 +20,7 @@
 #include "actionmodule.h"
 #include "kalmanfilterdir.h"
 #include "kalmanfilter.h"
+#include "gotoposition.hpp"
 #define MAX_THREADS 8
 
 
@@ -31,6 +33,8 @@ int mat_columns;
 int mat_rows;
 int length_to_mid;
 double alpha=0;
+auto end_time_2 = clock();
+auto start_time_2 = clock();
 KalmanFilterDir kalman_filter_dir;
 KalmanFilter kalman_filter;
 double depth_length_coefficient(double depth){
@@ -87,7 +91,7 @@ int main(int argc, char** argv) try
     // Start streaming from Intel RealSense Camera
     pipeline pipe;
     auto config = pipe.start();
-    std::ifstream t("../include/config/labconfig4351.json");
+    std::ifstream t("../include/config/415highDensity.json");
     std::string str((std::istreambuf_iterator<char>(t)),
                 std::istreambuf_iterator<char>());
     rs400::advanced_mode dev4json = config.get_device();
@@ -152,12 +156,16 @@ int main(int argc, char** argv) try
     double first_magic_distance=5;
     int count = 0;
     int magic_distance_flag = 1;
-	int frame_number_before_decision = 10;
+	int frame_number_before_decision = 3;
 	double magic_distance;
 	double lenght_to_midline_OFFSET;
+    int moveDirection=1;
     string move_direction ;
-    // int para1 = 200 ,para2 = 50;
-
+    //action consts
+    const double ACC_MAX = 600;
+    const double VEL_MAX = 400;
+    const double FRAME_PERIOD = 1 / 60.0;
+	ofstream debug("../build/velocity.txt");
 	// First while to aim at the ball
 
 	while (cvGetWindowHandle(window_name))
@@ -269,12 +277,12 @@ int main(int argc, char** argv) try
 		}
 		Point moment_center(moment.m10 / moment.m00, moment.m01 / moment.m00);
 		depth_m = Gdepth_mat.at<double>((int)moment.m01 / moment.m00, (int)moment.m10 / moment.m00);
-		magic_distance = depth_m[0] * 1.062 *100;
+		magic_distance = depth_m[0] * 1.042 *100;
         // magic_distance = kalman_filter_dir.update(magic_distance);
 		velocity = sqrt(y_vel*y_vel + x_vel*x_vel);
 
 		// calculate length to midline
-		length_to_mid = (moment.m10 / moment.m00 - 160)*depth_length_coefficient(magic_distance) / 320;
+		length_to_mid = (moment.m10 / moment.m00 - 210)*depth_length_coefficient(magic_distance) / 320;
 		last_x_meter = abs(length_to_mid);
 		cout << "length_to_mid " << length_to_mid <<endl;
 		cout << "Trying to locate the ball " << endl;
@@ -330,7 +338,7 @@ int main(int argc, char** argv) try
     while (cvGetWindowHandle(window_name))
     // for(int i = 0; i<60 && cvGetWindowHandle(window_name) ; i++)
     {
-		
+
         auto start_time = clock();
 
         // Wait for the next set of frames
@@ -436,16 +444,18 @@ int main(int argc, char** argv) try
         }
         Point moment_center (moment.m10 / moment.m00, moment.m01/moment.m00);
         depth_m = Gdepth_mat.at<double>((int)moment.m01 / moment.m00,(int)moment.m10/moment.m00);
-        magic_distance = depth_m[0] * 1.062* 100;
+        magic_distance = depth_m[0] * 1.00* 100;
         // calculate length to midline
         if (count_for_while2 == 0) {
-            length_to_mid = (moment.m10 / moment.m00 - 200)*depth_length_coefficient(magic_distance) / 320;
+            length_to_mid = (moment.m10 / moment.m00 - 210)*depth_length_coefficient(magic_distance) / 320;
             lenght_to_midline_OFFSET = length_to_mid;
             first_magic_distance = magic_distance;
+			last_x_meter = magic_distance;
             count_for_while2 += 1;
             cout << "lenghtOFFSET　= " << lenght_to_midline_OFFSET << endl;
+            start_time_2 = clock();
         }
-        length_to_mid = (moment.m10 / moment.m00-200)*depth_length_coefficient(magic_distance)/320 - lenght_to_midline_OFFSET;
+        length_to_mid = (moment.m10 / moment.m00-210)*depth_length_coefficient(magic_distance)/320 - lenght_to_midline_OFFSET;
         
 		
 
@@ -529,7 +539,7 @@ int main(int argc, char** argv) try
         // std::cout<<1000.000*(end_time-start_time)/CLOCKS_PER_SEC<<std::endl;
 
 
-		if (abs(y_vel)>30) {
+		if (abs(x_vel)>150) {
 			cout << "x_velocity = " << x_vel << "       ";
 			cout << "y_velocity = " << y_vel << "       ";
 			cout << "velocity = " << velocity << endl;
@@ -538,7 +548,7 @@ int main(int argc, char** argv) try
 			cout << "Yvelocity = " << y_vel << endl;
 		}
 
-        if(abs(y_vel)>30){
+        if(abs(x_vel)>150){
             count += 1;
             //alpha = atan(abs(last_y_meter - this_y_meter)/abs(this_x_meter-last_x_meter)/100);
             //cout<<"alpha  ="<<alpha<<"      ";
@@ -554,56 +564,78 @@ int main(int argc, char** argv) try
         
         if(count ==frame_number_before_decision ){
             //alpha_mean /= 3;
-			alpha_mean = atan(abs(alphaset[1][5] - alphaset[1][0]) / abs(alphaset[0][5] - alphaset[0][0]));
-			alpha_mean += atan(abs(alphaset[1][6] - alphaset[1][1]) / abs(alphaset[0][6] - alphaset[0][1]));
-			alpha_mean = atan(abs(alphaset[1][7] - alphaset[1][2]) / abs(alphaset[0][7] - alphaset[0][2]));
-			alpha_mean = atan(abs(alphaset[1][8] - alphaset[1][3]) / abs(alphaset[0][8] - alphaset[0][3]));
-			alpha_mean = atan(abs(alphaset[1][9] - alphaset[1][4]) / abs(alphaset[0][9] - alphaset[0][4]));
-			alpha_mean /= 5;
+			// alpha_mean += atan(abs(alphaset[1][5] - alphaset[1][0]) / abs(alphaset[0][5] - alphaset[0][0]));
+			// alpha_mean += atan(abs(alphaset[1][6] - alphaset[1][1]) / abs(alphaset[0][6] - alphaset[0][1]));
+			// alpha_mean += atan(abs(alphaset[1][7] - alphaset[1][2]) / abs(alphaset[0][7] - alphaset[0][2]));
+			// alpha_mean += atan(abs(alphaset[1][8] - alphaset[1][3]) / abs(alphaset[0][8] - alphaset[0][3]));
+			// alpha_mean += atan(abs(alphaset[1][9] - alphaset[1][4]) / abs(alphaset[0][9] - alphaset[0][4]));
+			alpha_mean += atan(abs(alphaset[1][1] - 0) / abs(alphaset[0][1] - first_magic_distance));
+			alpha_mean += atan(abs(alphaset[1][2] - alphaset[1][0]) / abs(alphaset[0][2] - alphaset[0][0]));
+			//alpha_mean += atan(abs(alphaset[1][4] - alphaset[1][1]) / abs(alphaset[0][4] - alphaset[0][1]));
+			alpha_mean /= 2;
             cout<<"alpha mean=  "<<alpha_mean;
             move_distance = alpha_mean*first_magic_distance;
             cout<<endl<<"the depth for you to react ="<<first_magic_distance-magic_distance<<endl;
-            count = 11;
-        }
-        if(length_to_mid < -1 ){
-            move_direction = "left";
-        }
-        else{
-            move_direction = "right";
-        }
-        last_x_meter = this_x_meter;
-        last_y_meter = this_y_meter;
-        cout<<"  first_magic_distance ="<<first_magic_distance<<endl;
-        cout<<"  move distance ="<<move_distance<<endl;
-        cout<<"time in a while"<<1000.000*(end_time-start_time)/CLOCKS_PER_SEC<<endl;
+            count = frame_number_before_decision+1;
+            moveDirection = length_to_mid/abs(length_to_mid);
+			last_x_meter = this_x_meter;
+			last_y_meter = this_y_meter;
+			cout << "  first_magic_distance =" << first_magic_distance << endl;
+			cout << "  move distance = " << move_distance << endl;
+			cout << "time in a while" << 1000.000*(end_time - start_time) / CLOCKS_PER_SEC << endl;
+            end_time_2 = clock();
+            break;
 
-      //   if(length_to_mid < -5){
-      //       if(length_to_mid >= -10){
-      //       ZActionModule::instance()->sendPacket(2, 0, -10, 0, true);
-		    // std::this_thread::sleep_for(std::chrono::milliseconds(5));                
-      //       }
-      //       else{
-      //       ZActionModule::instance()->sendPacket(2, 0, -20, 0, true);
-		    // std::this_thread::sleep_for(std::chrono::milliseconds(5));
-      //       }
-      //   }
-      //   else if(length_to_mid > 5){
-      //       if(length_to_mid <= 10){
-      //       ZActionModule::instance()->sendPacket(2, 0, 10, 0, true);
-		    // std::this_thread::sleep_for(std::chrono::milliseconds(5));                
-      //       }
-      //       else{
-      //       ZActionModule::instance()->sendPacket(2, 0, 20, 0, true);
-		    // std::this_thread::sleep_for(std::chrono::milliseconds(5));
-      //       }
-      //   }
-      //   else{
-      //       ZActionModule::instance()->sendPacket(2, 0, 0, 0, true);
-		    // std::this_thread::sleep_for(std::chrono::milliseconds(5));
-      //   }
+        }
 
     }
-    
+    cout << "FULL while" << 1000.000*(end_time_2 - start_time_2) / CLOCKS_PER_SEC << endl;
+    // claculate movement
+    double start = 0;  
+    double end = move_distance;
+    double dist = abs(end - start);
+    int tAcc, tFlat;    
+    double vMax = sqrt(ACC_MAX * dist);
+    if(vMax < VEL_MAX) {
+        tAcc = (int)(vMax / ACC_MAX / FRAME_PERIOD);
+        tFlat = 0;
+    }
+    else {
+        tAcc = (int)(VEL_MAX / ACC_MAX / FRAME_PERIOD);
+        double distAcc = VEL_MAX * VEL_MAX / (2 * ACC_MAX);
+        tFlat = (int)((dist - distAcc * 2) / VEL_MAX / FRAME_PERIOD);
+    }
+    int numFrame = 2 * tAcc + tFlat;    
+    double *velList = new double[numFrame+1];
+    for (int i = 1; i <= tAcc; i++) {
+        velList[i - 1] = i * ACC_MAX * FRAME_PERIOD;
+        velList[numFrame - i] = i * ACC_MAX * FRAME_PERIOD;
+    }
+    for(int i = tAcc; i < tAcc + tFlat; i++) {
+        velList[i] = VEL_MAX;
+    }
+    velList[numFrame]=0;
+    //move
+	cout << "moveDirection" << moveDirection<< endl;
+	cout << "Vellist[3]" << velList[3] << endl;
+
+    for (int i = 0; i<= numFrame; i++){
+        ZActionModule::instance()->sendPacket(2, 0, moveDirection*velList[i]*2, 0, true);
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+    }
+	// std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+	for (int i = 1; i <= 1000; i++) {
+		ZActionModule::instance()->sendPacket(2, 0, 0, 0, true);
+		std::this_thread::sleep_for(std::chrono::milliseconds(3));
+	
+	}
+
+    for (int i =0; i<= numFrame; i++){
+        debug << "i = "<< i<< "      ";
+        debug << "velocity = "<< velList[i]<< endl;
+    }
+
     // double dmean = 0;
     // double dvariance = 0; 
 
