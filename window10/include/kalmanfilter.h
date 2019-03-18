@@ -6,10 +6,10 @@
 /**
  * @brief The KalmanFilter class
  */
-class  KalmanFilter {
+class  KalmanFilter1 {
   public:
-    KalmanFilter();
-    ~KalmanFilter();
+    KalmanFilter1();
+    ~KalmanFilter1();
     void init(double, double, double, double);
     const Matrix2d& update(double, double);
     // const Matrix2d& update(CGeoPoint pos) {

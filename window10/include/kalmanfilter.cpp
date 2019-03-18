@@ -1,7 +1,7 @@
 #include "kalmanfilter.h"
 
 
-KalmanFilter::KalmanFilter():
+KalmanFilter1::KalmanFilter1():
     ifInit(false),
     K(4, 2),
     P(4, 4),
@@ -16,7 +16,7 @@ KalmanFilter::KalmanFilter():
     A(0, 2) = A(1, 3) = 1;
 }
 
-KalmanFilter::~KalmanFilter() {
+KalmanFilter1::~KalmanFilter1() {
 
 }
 /**
@@ -26,7 +26,7 @@ KalmanFilter::~KalmanFilter() {
  * @param vx
  * @param vy
  */
-void KalmanFilter::init(double px, double py, double vx, double vy) {
+void KalmanFilter1::init(double px, double py, double vx, double vy) {
     this->x = Matrix2d(4, 1, { px, py, vx, vy });
     this->K  = Matrix2d(4, 2);
     this->P  = Matrix2d::createIdentity(4) * 5;
@@ -39,7 +39,7 @@ void KalmanFilter::init(double px, double py, double vx, double vy) {
  * @param py
  * @return
  */
-const Matrix2d& KalmanFilter::update(double px, double py) {
+const Matrix2d& KalmanFilter1::update(double px, double py) {
     if (ifInit == false) {
         ifInit = true;
         init(px, py, 0, 0);
@@ -58,7 +58,7 @@ const Matrix2d& KalmanFilter::update(double px, double py) {
  * @param py
  * @return
  */
-const Matrix2d& KalmanFilter::follow(double px, double py) {
+const Matrix2d& KalmanFilter1::follow(double px, double py) {
     x = Matrix2d(4, 1, { z(0, 0), z(1, 0), px - z(0, 0), py - z(1, 0) });
     return update(px, py);
 }

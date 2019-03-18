@@ -25,16 +25,19 @@ SET(INCLUDE_DIRS ${CMAKE_CURRENT_LIST_DIR}/include
                  ${CMAKE_CURRENT_LIST_DIR}/include/kalmanfilter.h
                  ${CMAKE_CURRENT_LIST_DIR}/include/singleton.hpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/matrix2d.h
+                 ${CMAKE_CURRENT_LIST_DIR}/include/GetImage.h
                  ${QT_INCLUDE}
                  )
 
 # 源文件
-file(GLOB SOURCE ${CMAKE_CURRENT_LIST_DIR}/InterceptionSingleThread.cpp
+file(GLOB SOURCE ${CMAKE_CURRENT_LIST_DIR}/InterceptionMultiThread.cpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/actionmodule.cpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/kalmanfilterdir.cpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/kalmanfilter.cpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/matrix2d.cpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/gotoposition.cpp
+                 ${CMAKE_CURRENT_LIST_DIR}/include/GetImage.cpp
+                 #${CMAKE_CURRENT_LIST_DIR}/include/zsplugin.cpp
                  )
 
 # 链接文件
