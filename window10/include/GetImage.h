@@ -18,6 +18,7 @@ public:
 	void temporalFilter(double a = 0.55, double d = 100, int h = 7);
 	void hole_filling_filter(int h = 2);
 	void displayControl();
+	void get_Frame();
 	bool get_RGBD_data();
 	void convert_2_GMAT();
 	void rgb_2_HSV();
@@ -52,8 +53,8 @@ public:
 	//string move_direction;
 	double move_distance = 0;
 	cv::Moments moment;
-
-
+	char key;
+	int pixal_to_bottom = 480;
 
 
 private:
@@ -61,11 +62,13 @@ private:
 	rs2::pipeline_profile config;
 	rs2::video_stream_profile *profile;
 	rs2::align *align_to;
+	rs2::frameset data;
 	rs2::video_frame *color_frame;
 	rs2::depth_frame *depth_frame;
 	cv::Mat Gcolor_mat;
 	cv::Mat Gdepth_mat;
 	cv::Mat imgHSV;
 	cv::Rect object;
+
 
 };

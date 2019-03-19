@@ -71,6 +71,7 @@ int main(int argc, char** argv) try
     double this_x_meter = 0;
     double last_y_meter = 0;
     double this_y_meter = 0;
+	double x_meter_change = 0;
     double y_vel = 0;
     double x_vel = 0;
     double velocity;
@@ -86,6 +87,10 @@ int main(int argc, char** argv) try
 	double lenght_to_midline_OFFSET;
     int moveDirection=1;
     string move_direction ;
+	int count4while2 = 0;
+	int this_pixal_to_bottom = 480;
+	int last_pixal_to_bottom = 480;
+	int pixal_to_bottom_change = 0;
     //action consts
     const double ACC_MAX = 900;
     const double VEL_MAX = 400;
@@ -98,6 +103,8 @@ int main(int argc, char** argv) try
 		// for(int i = 0; i<60 && cvGetWindowHandle(getImage.window_name) ; i++)
 	{
 
+		auto start_time = clock();
+		getImage.get_Frame();
 		bool result = getImage.get_RGBD_data();
 
 		if (!result) {
@@ -150,7 +157,8 @@ int main(int argc, char** argv) try
 			
 		
 		}
-
+		auto end_time = clock();
+		cout << "time in While1  " << 1000.000*(end_time - start_time) / CLOCKS_PER_SEC << endl<< endl;
 	}
 
 	ZActionModule::instance()->sendPacket(2, 0, 0, 0, true);
@@ -167,7 +175,7 @@ int main(int argc, char** argv) try
     {
 
         auto start_time = clock();
-
+		getImage.get_Frame();
 		bool result = getImage.get_RGBD_data();
 
 		if (!result) {
@@ -178,27 +186,39 @@ int main(int argc, char** argv) try
 		getImage.convert_2_GMAT();
 		getImage.rgb_2_HSV();
 		getImage.find_Contour(true);
-        
+		//getImage.show_window();
 
         this_x_meter = getImage.magic_distance;
         this_y_meter = abs(getImage.length_to_mid);
+		this_pixal_to_bottom = getImage.pixal_to_bottom;
         auto end_time = clock();
-		cout << "time in a While  " << 1000.000*(end_time - start_time) / CLOCKS_PER_SEC << endl;
-        x_vel = (this_x_meter-last_x_meter)/(end_time-start_time)*CLOCKS_PER_SEC;
-        y_vel = (last_y_meter-this_y_meter)/(end_time-start_time)*CLOCKS_PER_SEC;
-        velocity = sqrt(y_vel*y_vel + x_vel*x_vel);
+		if (count4while2 == 0) {
+			/*x_vel = (this_x_meter - getImage.last_x_meter) / (end_time - start_time)*CLOCKS_PER_SEC;
+			y_vel = (last_y_meter - getImage.this_y_meter) / (end_time - start_time)*CLOCKS_PER_SEC;
+			velocity = sqrt(y_vel*y_vel + x_vel*x_vel);*/
+			x_meter_change = getImage.last_x_meter - this_x_meter;
+			pixal_to_bottom_change = this_pixal_to_bottom - getImage.pixal_to_bottom;
+			count4while2 += 1;
+		}
+		else {
+			//x_vel = (this_x_meter - last_x_meter) / (end_time - start_time)*CLOCKS_PER_SEC;
+			//y_vel = (last_y_meter - this_y_meter) / (end_time - start_time)*CLOCKS_PER_SEC;
+			//velocity = sqrt(y_vel*y_vel + x_vel*x_vel);
+			x_meter_change = last_x_meter - this_x_meter;
+			pixal_to_bottom_change = this_pixal_to_bottom - last_pixal_to_bottom;
+		}
 
 
-		if (x_vel<= -150) {
+		if (pixal_to_bottom_change<=-2 || x_meter_change >= 10) {
 			cout << "x_velocity = " << x_vel << "       ";
 			cout << "y_velocity = " << y_vel << "       ";
 			cout << "velocity = " << velocity << endl;
 		}
 		else {
-			cout << "Yvelocity = " << y_vel << endl;
+			cout << "Xvelocity = " << x_vel << endl;
 		}
 
-        if(x_vel<= -150){
+        if(pixal_to_bottom_change <= -2 || x_meter_change >= 10){
             count += 1;
             //alpha = atan(abs(last_y_meter - this_y_meter)/abs(this_x_meter-last_x_meter)/100);
             //cout<<"alpha  ="<<alpha<<"      ";
@@ -238,6 +258,7 @@ int main(int argc, char** argv) try
         }
 		last_x_meter = this_x_meter;
 		last_y_meter = this_y_meter;
+		last_pixal_to_bottom = this_pixal_to_bottom;
     }
 	cout << "out of while2" << endl;
     if(move_distance >= 100){
@@ -273,7 +294,7 @@ int main(int argc, char** argv) try
 	cout << "moveDirection" << moveDirection<< endl;
 
     for (int i = 0; i<= numFrame; i++){
-        ZActionModule::instance()->sendPacket(2, 0, moveDirection*velList[i]*2, 0, true);
+        ZActionModule::instance()->sendPacket(2, 0, moveDirection*velList[i]*2.2, 0, true);
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
 	// std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -288,141 +309,6 @@ int main(int argc, char** argv) try
         debug << "i = "<< i<< "      ";
         debug << "velocity = "<< velList[i]<< endl;
     }
-
-
-    //third while to adjust the locate base on vision
-
-
-    // while (cvGetWindowHandle(getImage.window_name))
-    //     // for(int i = 0; i<60 && cvGetWindowHandle(getImage.window_name) ; i++)
-    // {
-    //     auto start_time = clock();
-
-    //     // Wait for the next set of frames
-    //     auto data = pipe.wait_for_frames();
-    //     // Make sure the frames are spatially aligned
-    //     data = align_to.process(data);
-
-    //     auto color_frame = data.get_color_frame();
-    //     auto depth_frame = data.get_depth_frame();
-
-    //     // If we only received new depth frame, 
-    //     // but the color did not update, continue
-    //     static int last_frame_number = 0;
-    //     if (color_frame.get_frame_number() == last_frame_number) continue;
-    //     last_frame_number = color_frame.get_frame_number();
-
-    //     // Convert RealSense frame to OpenCV matrix:
-    //     auto color_mat = frame_to_mat(color_frame);
-    //     // imshow ("image", color_mat);
-    //     auto depth_mat = depth_frame_to_meters(pipe, depth_frame);
-    //     // imshow ("image_depth", depth_mat);
-    //     Mat inputBlob = blobFromImage(color_mat, inScaleFactor,
-    //         Size(inWidth, inHeight), meanVal, false); //Convert Mat to batch of images
-
-
-    //     Mat Gcolor_mat;
-    //     Mat Gdepth_mat;
-
-
-    //     GaussianBlur(color_mat, Gcolor_mat, Size(11, 11), 0);
-    //     GaussianBlur(depth_mat, Gdepth_mat, Size(11,11), 0);
-
-
-    //     // Crop both color and depth frames
-    //     Gcolor_mat = Gcolor_mat(crop);
-    //     Gdepth_mat = Gdepth_mat(crop);
-
-    //     //start of mod
-    //     mat_rows = Gcolor_mat.rows;
-    //     mat_columns = Gcolor_mat.cols;
-    //     // cout<< mat_columns<< endl;
-    //     Mat imgHSV;
-    //     vector<Mat> hsvSplit;
-    //     cvtColor(Gcolor_mat, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
-    //                                                  //因为我们读取的是彩色图，直方图均衡化需要在HSV空间做
-
-    //     split(imgHSV, hsvSplit);
-    //     //cout << hsvSplit.size() << endl;
-        
-    //     equalizeHist(hsvSplit[2], hsvSplit[2]);
-        
-    //     merge(hsvSplit, imgHSV);
-    //     Mat imgThresholded;
-
-    //     inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
-
-    //                                                                                                   //开操作 (去除一些噪点)
-    //     Mat element = getStructuringElement(MORPH_RECT, Size(5, 5));
-    //     morphologyEx(imgThresholded, imgThresholded, MORPH_OPEN, element);
-
-    //     //闭操作 (连接一些连通域)
-    //     morphologyEx(imgThresholded, imgThresholded, MORPH_CLOSE, element);
-
-    //     imshow("Thresholded Image", imgThresholded); //show the thresholded image
-    //                                                  //   imshow("Original", Gcolor_mat); //show the original image
-
-    //     char key = (char)waitKey(1);
-    //     //end of mod
-
-    //     vector<vector<cv::Point>> contours;
-    //     cv::findContours(imgThresholded, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-    //     double maxArea = 0;
-    //     vector<cv::Point> maxContour;
-    //     for (size_t i = 0; i < contours.size(); i++)
-    //     {
-    //         double area = cv::contourArea(contours[i]);
-    //         if (area > maxArea)
-    //         {
-    //             maxArea = area;
-    //             maxContour = contours[i];
-    //         }
-    //     }
-    //     cv::Rect maxRect = cv::boundingRect(maxContour);
-
-    //     // auto object =  maxRect & Rect (0,0,depth_mat.cols, depth_mat.rows );
-    //     auto object = maxRect;
-    //     auto moment = cv::moments(maxContour, true);
-
-    //     Scalar depth_m;
-    //     if (moment.m00 == 0) {
-    //         moment.m00 = 1;
-    //     }
-    //     Point moment_center(moment.m10 / moment.m00, moment.m01 / moment.m00);
-    //     depth_m = Gdepth_mat.at<double>((int)moment.m01 / moment.m00, (int)moment.m10 / moment.m00);
-    //     magic_distance = depth_m[0] * 1.042 *100;
-    //     // magic_distance = kalman_filter_dir.update(magic_distance);
-    //     velocity = sqrt(y_vel*y_vel + x_vel*x_vel);
-
-    //     // calculate length to midline
-    //     length_to_mid = (moment.m10 / moment.m00 - 200)*depth_length_coefficient(magic_distance) / 320;
-    //     last_x_meter = abs(length_to_mid);
-    //     cout << "length_to_mid " << length_to_mid <<endl;
-
-            
-    //     if(pixal_to_bottom != 480){
-    //         if (length_to_mid < -2) {
-                
-    //                 ZActionModule::instance()->sendPacket(2, 0, -10, 0, true);
-                
-    //         }
-    //         else if (length_to_mid > 2) {
-                
-    //                 ZActionModule::instance()->sendPacket(2, 0, 10, 0, true);
-                
-    //         }
-    //         else {
-    //             ZActionModule::instance()->sendPacket(2, 0, 0, 0, true);
-    //         }
-    //     }
-    //     else{
-    //         ZActionModule::instance()->sendPacket(2, 0, 0, 0, true);
-    //                 std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    //     }
-        
-        
-
-    // }*/
    
     return EXIT_SUCCESS;
 }

@@ -148,11 +148,21 @@ void GetImage::displayControl() {
 
 }
 
+
+
+
+void GetImage::get_Frame() {
+
+
+	auto start_timeFrame = clock();
+
+	// Wait for the next set of frames
+	data = pipe.wait_for_frames();
+	auto end_timeFrame = clock();
+	cout << "time in Frame  " << 1000.000*(end_timeFrame - start_timeFrame) / CLOCKS_PER_SEC << endl;
+}
 bool GetImage::get_RGBD_data() {
 	auto start_timeRGB = clock();
-	// Wait for the next set of frames
-	auto data = pipe.wait_for_frames();
-
 	
 	// Make sure the frames are spatially aligned
 	data = align_to->process(data);
@@ -190,23 +200,28 @@ bool GetImage::get_RGBD_data() {
 
 void GetImage::convert_2_GMAT() {
 
+	auto start_timeGMAT = clock();
 	// Convert RealSense frame to OpenCV matrix:
 	auto color_mat = frame_to_mat(*color_frame);
 	// imshow ("image", color_mat);
 	auto depth_mat = depth_frame_to_meters(pipe, *depth_frame);
-	// imshow ("image_depth", depth_mat);
+	//imshow ("image_depth", depth_mat);
 	Mat inputBlob = blobFromImage(color_mat, inScaleFactor,
 		Size(inWidth, inHeight), meanVal, false); //Convert Mat to batch of images
 
-	GaussianBlur(color_mat, Gcolor_mat, Size(11, 11), 0);
-	GaussianBlur(depth_mat, Gdepth_mat, Size(11, 11), 0);
+	GaussianBlur(color_mat, Gcolor_mat, Size(11,11), 0);
+	GaussianBlur(depth_mat, Gdepth_mat, Size(3,3), 0);
 
 	// Crop both color and depth frames
 	Gcolor_mat = Gcolor_mat(crop);
 	Gdepth_mat = Gdepth_mat(crop);
+	auto end_timeGMAT = clock();
+	cout << "time in GMAT  " << 1000.000*(end_timeGMAT - start_timeGMAT) / CLOCKS_PER_SEC << endl;
 }
 
 void GetImage::rgb_2_HSV() {
+
+	auto start_timeHSV = clock();
 	vector<Mat> hsvSplit;
 	cvtColor(Gcolor_mat, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
 												 //?Ϊ????ȡ??ǲ??ͼ??ֱ??ͼ???�?Ҫ?HSV?ռ??
@@ -227,6 +242,9 @@ void GetImage::rgb_2_HSV() {
 	//?ղ?? (?????Щ??ͨ?)
 	morphologyEx(imgThresholded, imgThresholded, MORPH_CLOSE, element);
 	imshow("Thresholded Image", imgThresholded);
+	key = (char)cv::waitKey(1);
+	auto end_timeHSV = clock();
+	cout << "time in HSV  " << 1000.000*(end_timeHSV - start_timeHSV) / CLOCKS_PER_SEC << endl;
 }
 
 
@@ -238,6 +256,10 @@ double GetImage::depth_length_coefficient(double depth) {
 
 
 void GetImage::find_Contour(bool KF) {
+
+
+	auto start_timeContour = clock();
+
 	vector<vector<cv::Point>> contours;
 	cv::findContours(imgThresholded, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
 	double maxArea = 0;
@@ -264,7 +286,7 @@ void GetImage::find_Contour(bool KF) {
 	Point moment_center(moment.m10 / moment.m00, moment.m01 / moment.m00);
 	depth_m = Gdepth_mat.at<double>((int)moment.m01 / moment.m00, (int)moment.m10 / moment.m00);
 	magic_distance = depth_m[0] * 1.042 * 100;
-	
+	pixal_to_bottom = (480 - moment.m01 / moment.m00);
 
 
 
@@ -278,6 +300,7 @@ void GetImage::find_Contour(bool KF) {
 			length_to_mid = kalman_filter.update(magic_distance, length_to_mid)(1, 0);
 			last_x_meter = magic_distance;
 			last_y_meter = abs(length_to_mid);
+			pixal_to_bottom = (480 - moment.m01 / moment.m00);
 			count_for_while2 += 1;
 			cout << "lenghtOFFSET = " << lenght_to_midline_OFFSET << endl;
 		}
@@ -293,6 +316,9 @@ void GetImage::find_Contour(bool KF) {
 		length_to_mid = (moment.m10 / moment.m00 - 200)*depth_length_coefficient(magic_distance) / 320;
 
 	}
+
+	auto end_timeContour = clock();
+	cout << "time in Contour  " << 1000.000*(end_timeContour - start_timeContour) / CLOCKS_PER_SEC << endl;
 }
 
 void GetImage::show_window() {
@@ -355,7 +381,7 @@ void GetImage::show_window() {
 		*/
 
 	imshow(window_name, Gcolor_mat);
+	key = (char)cv::waitKey(1);
 	imshow("heatmap", Gdepth_mat);
-
-
+	key = (char)cv::waitKey(1);
 }
