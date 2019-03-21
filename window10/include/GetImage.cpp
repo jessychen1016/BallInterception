@@ -12,6 +12,8 @@
 #include "time.h"
 #include <chrono>
 #include <thread>
+#include <mutex>
+#include <list>
 #include "GetImage.h"
 #include "kalmanfilter.h"
 
@@ -161,9 +163,19 @@ void GetImage::get_Frame() {
 	auto end_timeFrame = clock();
 	cout << "time in Frame  " << 1000.000*(end_timeFrame - start_timeFrame) / CLOCKS_PER_SEC << endl;
 }
+
+
 bool GetImage::get_RGBD_data() {
 	auto start_timeRGB = clock();
-	
+	framesetlock.lock();
+	if (frameset_queue.empty()) {
+		framesetlock.unlock();
+		return false;
+	}
+
+	data = frameset_queue.back();
+	frameset_queue.pop_back();
+	framesetlock.unlock();
 	// Make sure the frames are spatially aligned
 	data = align_to->process(data);
 	
@@ -218,6 +230,7 @@ void GetImage::convert_2_GMAT() {
 	auto end_timeGMAT = clock();
 	cout << "time in GMAT  " << 1000.000*(end_timeGMAT - start_timeGMAT) / CLOCKS_PER_SEC << endl;
 }
+
 
 void GetImage::rgb_2_HSV() {
 
@@ -382,6 +395,228 @@ void GetImage::show_window() {
 
 	imshow(window_name, Gcolor_mat);
 	key = (char)cv::waitKey(1);
-	imshow("heatmap", Gdepth_mat);
+	imshow("heatmap", Gdepth_matThread);
 	key = (char)cv::waitKey(1);
+}
+
+
+
+
+
+
+// For Multithread
+
+
+void GetImage::get_FrameThread() {
+	while (true) {
+		dataThread = pipe.wait_for_frames();
+		framesetlock.lock();
+		frameset_queue.push_back(dataThread);
+		framesetlock.unlock();
+	}
+}
+
+void GetImage::get_RGBD_dataThread() {
+
+	while (true) {	// Make sure the frames are spatially aligned
+		auto start_timeRGB = clock();
+		framesetlock.lock();
+		if (frameset_queue.empty()) {
+			framesetlock.unlock();
+			continue;
+		}
+
+		data = frameset_queue.back();
+		frameset_queue.pop_back();
+		framesetlock.unlock();
+		data = align_to->process(data);
+
+		auto&& color_frame_ = data.get_color_frame();
+		auto&& depth_frame_ = data.get_depth_frame();
+
+
+
+
+		if (color_frame)
+			*color_frame = color_frame_;//data.get_color_frame();
+		else
+			color_frame = new rs2::video_frame(color_frame_);
+
+		if (depth_frame)
+			*depth_frame = depth_frame_;// data.get_depth_frame();
+		else
+			depth_frame = new rs2::depth_frame(depth_frame_);
+
+
+		*depth_frame = temporal_filter.process(*depth_frame);
+
+		color_depth_lock.lock();
+		color_frame_queue.push_back(*color_frame);
+		depth_frame_queue.push_back(*depth_frame);
+		color_depth_lock.unlock();
+
+		// If we only received new depth frame, 
+		// but the color did not update, continue
+		/*	static int last_frame_number = 0;
+		if (color_frame->get_frame_number() == last_frame_number) continue;
+
+		last_frame_number = color_frame->get_frame_number();
+		*/
+		auto end_timeRGB = clock();
+		cout << "time in RGB  " << 1000.000*(end_timeRGB - start_timeRGB) / CLOCKS_PER_SEC << endl;
+	}
+
+}
+
+
+void GetImage::convert_2_GMATThread() {
+	while (true) {
+		auto start_timeGMATThread = clock();
+		// Convert RealSense frame to OpenCV matrix:
+
+		color_depth_lock.lock();
+		if (color_frame_queue.empty() || depth_frame_queue.empty()) {
+			color_depth_lock.unlock();
+			continue;
+		}
+		auto color_mat = frame_to_mat(color_frame_queue.back());
+		color_frame_queue.pop_back();
+		auto depth_mat = depth_frame_to_meters(pipe, depth_frame_queue.back());
+		depth_frame_queue.pop_back();
+		color_depth_lock.unlock();
+
+		//imshow ("image_depth", depth_mat);
+		//Mat inputBlob = blobFromImage(color_mat, inScaleFactor,
+		//	Size(inWidth, inHeight), meanVal, false); //Convert Mat to batch of images
+
+		GaussianBlur(color_mat, Gcolor_mat, Size(11, 11), 0);
+		GaussianBlur(depth_mat, Gdepth_mat, Size(3, 3), 0);
+
+		//Gcolor_mat = color_mat;
+		//Gdepth_mat = depth_mat;
+
+		// Crop both color and depth frames
+		Gcolor_mat = Gcolor_mat(crop);
+		Gdepth_mat = Gdepth_mat(crop);
+
+
+		toHSV_lock.lock();
+		color_mat_queue.push_back(Gcolor_mat);
+		depth_mat_queue.push_back(Gdepth_mat);
+		toHSV_lock.unlock();
+
+		auto end_timeGMATThread = clock();
+		cout << "time in GMATThread  " << 1000.000*(end_timeGMATThread - start_timeGMATThread) / CLOCKS_PER_SEC << endl;
+	}
+
+}
+
+bool GetImage::rgb_2_HSVThread() {
+	auto start_timeHSV = clock();
+
+	toHSV_lock.lock();
+	if (color_mat_queue.empty() || depth_mat_queue.empty()) {
+		toHSV_lock.unlock();
+		return false;
+	}
+	Gcolor_matThread = color_mat_queue.back(); 
+	color_mat_queue.pop_back();
+	Gdepth_matThread = depth_mat_queue.back();
+	depth_mat_queue.pop_back();
+	toHSV_lock.unlock();
+
+	vector<Mat> hsvSplit;
+	cvtColor(Gcolor_matThread, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
+													   //?Ϊ????ȡ??ǲ??ͼ??ֱ??ͼ???�?Ҫ?HSV?ռ??
+
+	split(imgHSV, hsvSplit);
+	//cout << hsvSplit.size() << endl;
+
+	equalizeHist(hsvSplit[2], hsvSplit[2]);
+
+	merge(hsvSplit, imgHSV);
+
+	inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
+
+																								  //????? (ȥ??һЩ???
+	Mat element = getStructuringElement(MORPH_RECT, Size(5, 5));
+	morphologyEx(imgThresholded, imgThresholded, MORPH_OPEN, element);
+
+	//?ղ?? (?????Щ??ͨ?)
+	morphologyEx(imgThresholded, imgThresholded, MORPH_CLOSE, element);
+	imshow("Thresholded Image", imgThresholded);
+	key = (char)cv::waitKey(1);
+	imshow("GColor Image", Gcolor_mat);
+	key = (char)cv::waitKey(1);
+	auto end_timeHSV = clock();
+	cout << "time in HSV  " << 1000.000*(end_timeHSV - start_timeHSV) / CLOCKS_PER_SEC << endl;
+	return true;
+}
+
+
+
+void GetImage::find_ContourThread(bool KF) {
+
+
+	auto start_timeContour = clock();
+
+	vector<vector<cv::Point>> contours;
+	cv::findContours(imgThresholded, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+	double maxArea = 0;
+	vector<cv::Point> maxContour;
+	for (size_t i = 0; i < contours.size(); i++)
+	{
+		double area = cv::contourArea(contours[i]);
+		if (area > maxArea)
+		{
+			maxArea = area;
+			maxContour = contours[i];
+		}
+	}
+	cv::Rect maxRect = cv::boundingRect(maxContour);
+
+	// auto object =  maxRect & Rect (0,0,depth_mat.cols, depth_mat.rows );
+	object = maxRect;
+	moment = cv::moments(maxContour, true);
+
+	Scalar depth_m;
+	if (moment.m00 == 0) {
+		moment.m00 = 1;
+	}
+	Point moment_center(moment.m10 / moment.m00, moment.m01 / moment.m00);
+	depth_m = Gdepth_matThread.at<double>((int)moment.m01 / moment.m00, (int)moment.m10 / moment.m00);
+	magic_distance = depth_m[0] * 1.042 * 100;
+	pixal_to_bottom = (480 - moment.m01 / moment.m00);
+
+
+
+	if (KF) {
+		if (count_for_while2 == 0) {
+			length_to_mid = (moment.m10 / moment.m00 - 200)*depth_length_coefficient(magic_distance) / 320;
+			lenght_to_midline_OFFSET = length_to_mid;
+			length_to_mid = (moment.m10 / moment.m00 - 200)*depth_length_coefficient(magic_distance) / 320 - lenght_to_midline_OFFSET;
+			first_magic_distance = magic_distance;
+			magic_distance = kalman_filter.update(magic_distance, length_to_mid)(0, 0);
+			length_to_mid = kalman_filter.update(magic_distance, length_to_mid)(1, 0);
+			last_x_meter = magic_distance;
+			last_y_meter = abs(length_to_mid);
+			pixal_to_bottom = (480 - moment.m01 / moment.m00);
+			count_for_while2 += 1;
+			cout << "lenghtOFFSET = " << lenght_to_midline_OFFSET << endl;
+		}
+		else {
+			length_to_mid = (moment.m10 / moment.m00 - 200)*depth_length_coefficient(magic_distance) / 320 - lenght_to_midline_OFFSET;
+			//KalmanFilter
+			magic_distance = kalman_filter.update(magic_distance, length_to_mid)(0, 0);
+			length_to_mid = kalman_filter.update(magic_distance, length_to_mid)(1, 0);
+		}
+	}
+	else {
+		// calculate length to midline
+		length_to_mid = (moment.m10 / moment.m00 - 200)*depth_length_coefficient(magic_distance) / 320;
+
+	}
+
+	auto end_timeContour = clock();
+	cout << "time in Contour  " << 1000.000*(end_timeContour - start_timeContour) / CLOCKS_PER_SEC << endl;
 }

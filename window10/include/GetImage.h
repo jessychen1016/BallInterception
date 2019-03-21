@@ -7,6 +7,8 @@
 #include "time.h"
 #include <chrono>
 #include <thread>
+#include <mutex>
+#include <list>
 #include "kalmanfilter.h"
 
 class GetImage{
@@ -19,11 +21,16 @@ public:
 	void hole_filling_filter(int h = 2);
 	void displayControl();
 	void get_Frame();
+	void get_FrameThread();
 	bool get_RGBD_data();
+	void get_RGBD_dataThread();
 	void convert_2_GMAT();
+	void convert_2_GMATThread();
 	void rgb_2_HSV();
+	bool rgb_2_HSVThread();
 	double depth_length_coefficient(double depth);
 	void find_Contour(bool KF = false);
+	void find_ContourThread(bool KF = false);
 	void show_window();
 
 
@@ -63,12 +70,21 @@ private:
 	rs2::video_stream_profile *profile;
 	rs2::align *align_to;
 	rs2::frameset data;
+	rs2::frameset dataThread;
 	rs2::video_frame *color_frame;
 	rs2::depth_frame *depth_frame;
 	cv::Mat Gcolor_mat;
 	cv::Mat Gdepth_mat;
+	cv::Mat Gcolor_matThread;
+	cv::Mat Gdepth_matThread;
 	cv::Mat imgHSV;
 	cv::Rect object;
-
-
+	std::list<rs2::frameset> frameset_queue;
+	std::list<rs2::video_frame> color_frame_queue;
+	std::list<rs2::depth_frame> depth_frame_queue;
+	std::list<cv::Mat> color_mat_queue;
+	std::list<cv::Mat> depth_mat_queue;
+	std::mutex framesetlock;
+	std::mutex color_depth_lock;
+	std::mutex toHSV_lock;
 };

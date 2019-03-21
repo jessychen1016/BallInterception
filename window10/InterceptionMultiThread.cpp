@@ -17,6 +17,8 @@
 #include "time.h"
 #include <chrono>
 #include <thread>
+#include <mutex>
+#include <list>
 #include "GetImage.h"
 #include "actionmodule.h"
 #include "kalmanfilterdir.h"
@@ -99,12 +101,17 @@ int main(int argc, char** argv) try
 
 	// First while to aim at the ball
 
+	std::thread get_FrameThread(&GetImage::get_FrameThread, &getImage);
+	//std::thread get_RGBD_dataThread(&GetImage::get_RGBD_dataThread, &getImage);
+	//std::thread convert_2_GMATThread(&GetImage::convert_2_GMATThread, &getImage);
+
+	// First while to aim at the ball
 	while (cvGetWindowHandle(getImage.window_name))
 		// for(int i = 0; i<60 && cvGetWindowHandle(getImage.window_name) ; i++)
 	{
 
 		auto start_time = clock();
-		getImage.get_Frame();
+
 		bool result = getImage.get_RGBD_data();
 
 		if (!result) {
@@ -115,6 +122,10 @@ int main(int argc, char** argv) try
 		getImage.convert_2_GMAT();
 		getImage.rgb_2_HSV();
 		getImage.find_Contour(false);
+		
+		//if(!getImage.rgb_2_HSVThread()) continue;
+
+		//getImage.find_ContourThread(false);
 
 
 		
@@ -253,7 +264,6 @@ int main(int argc, char** argv) try
 			cout << endl << "length2MID =" << getImage.length_to_mid << endl;
             moveDirection = getImage.length_to_mid/abs(getImage.length_to_mid);
             cout << "FULL while = " << full_time << endl;
-            //pixal_to_bottom = (480 - getImage.moment.m01 / getImage.moment.m00);
             break;
         }
 		last_x_meter = this_x_meter;
@@ -265,7 +275,7 @@ int main(int argc, char** argv) try
         cout<< "Out Of RANGE DAMN IT!!!!!!!!"<< endl;
         return EXIT_SUCCESS;
     }
-    // claculate movement
+    // calculate movement
     double start = 0;  
     double end = move_distance;
     double dist = abs(end - start);
@@ -294,8 +304,8 @@ int main(int argc, char** argv) try
 	cout << "moveDirection" << moveDirection<< endl;
 
     for (int i = 0; i<= numFrame; i++){
-        ZActionModule::instance()->sendPacket(2, 0, moveDirection*velList[i]*2.2, 0, true);
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+        ZActionModule::instance()->sendPacket(2, 0, moveDirection*velList[i]*2, 0, true);
+        std::this_thread::sleep_for(std::chrono::milliseconds(18));
     }
 	// std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -311,6 +321,10 @@ int main(int argc, char** argv) try
     }
    
     return EXIT_SUCCESS;
+	get_FrameThread.join();
+	//get_RGBD_dataThread.join();
+	//convert_2_GMATThread.join();
+
 }
 catch (const rs2::error & e)
 {
