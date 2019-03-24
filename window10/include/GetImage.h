@@ -27,14 +27,15 @@ public:
 	void convert_2_GMAT();
 	void convert_2_GMATThread();
 	void rgb_2_HSV();
-	bool rgb_2_HSVThread();
+	void rgb_2_HSVThread();
 	double depth_length_coefficient(double depth);
 	void find_Contour(bool KF = false);
-	void find_ContourThread(bool KF = false);
+	bool find_ContourThread(bool KF = false);
 	void show_window();
 
 
 	cv::Mat imgThresholded;
+	cv::Mat imgThresholdedThread;
 	rs2::temporal_filter temporal_filter;
 	cv::Rect crop;
 	const char const* window_name;
@@ -84,7 +85,9 @@ private:
 	std::list<rs2::depth_frame> depth_frame_queue;
 	std::list<cv::Mat> color_mat_queue;
 	std::list<cv::Mat> depth_mat_queue;
+	std::list<cv::Mat> imgThreshold_queue;
 	std::mutex framesetlock;
 	std::mutex color_depth_lock;
 	std::mutex toHSV_lock;
+	std::mutex hsv_2_contour_lock;
 };

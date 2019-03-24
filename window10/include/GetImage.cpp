@@ -167,16 +167,10 @@ void GetImage::get_Frame() {
 
 bool GetImage::get_RGBD_data() {
 	auto start_timeRGB = clock();
-	framesetlock.lock();
-	if (frameset_queue.empty()) {
-		framesetlock.unlock();
-		return false;
-	}
-
 	data = frameset_queue.back();
 	frameset_queue.pop_back();
 	framesetlock.unlock();
-	// Make sure the frames are spatially aligned
+	 //Make sure the frames are spatially aligned
 	data = align_to->process(data);
 	
 	auto&& color_frame_ = data.get_color_frame();
@@ -211,29 +205,34 @@ bool GetImage::get_RGBD_data() {
 
 
 void GetImage::convert_2_GMAT() {
-
 	auto start_timeGMAT = clock();
+	
+
 	// Convert RealSense frame to OpenCV matrix:
 	auto color_mat = frame_to_mat(*color_frame);
 	// imshow ("image", color_mat);
+	
 	auto depth_mat = depth_frame_to_meters(pipe, *depth_frame);
+
 	//imshow ("image_depth", depth_mat);
-	Mat inputBlob = blobFromImage(color_mat, inScaleFactor,
-		Size(inWidth, inHeight), meanVal, false); //Convert Mat to batch of images
-
-	GaussianBlur(color_mat, Gcolor_mat, Size(11,11), 0);
-	GaussianBlur(depth_mat, Gdepth_mat, Size(3,3), 0);
-
+	//Mat inputBlob = blobFromImage(color_mat, inScaleFactor,
+	//	Size(inWidth, inHeight), meanVal, false); //Convert Mat to batch of images
+	
+	//GaussianBlur(color_mat, Gcolor_mat, Size(11,11), 0);
+	//GaussianBlur(depth_mat, Gdepth_mat, Size(3,3), 0);
+	Gcolor_mat = color_mat;
+	Gdepth_mat = depth_mat;
 	// Crop both color and depth frames
 	Gcolor_mat = Gcolor_mat(crop);
 	Gdepth_mat = Gdepth_mat(crop);
+	
 	auto end_timeGMAT = clock();
 	cout << "time in GMAT  " << 1000.000*(end_timeGMAT - start_timeGMAT) / CLOCKS_PER_SEC << endl;
 }
 
 
 void GetImage::rgb_2_HSV() {
-
+	cout << "Enter HSV  " << endl;
 	auto start_timeHSV = clock();
 	vector<Mat> hsvSplit;
 	cvtColor(Gcolor_mat, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
@@ -411,6 +410,7 @@ void GetImage::get_FrameThread() {
 	while (true) {
 		dataThread = pipe.wait_for_frames();
 		framesetlock.lock();
+		frameset_queue.clear();
 		frameset_queue.push_back(dataThread);
 		framesetlock.unlock();
 	}
@@ -425,7 +425,6 @@ void GetImage::get_RGBD_dataThread() {
 			framesetlock.unlock();
 			continue;
 		}
-
 		data = frameset_queue.back();
 		frameset_queue.pop_back();
 		framesetlock.unlock();
@@ -451,6 +450,8 @@ void GetImage::get_RGBD_dataThread() {
 		*depth_frame = temporal_filter.process(*depth_frame);
 
 		color_depth_lock.lock();
+		color_frame_queue.clear();
+		depth_frame_queue.clear();
 		color_frame_queue.push_back(*color_frame);
 		depth_frame_queue.push_back(*depth_frame);
 		color_depth_lock.unlock();
@@ -489,11 +490,11 @@ void GetImage::convert_2_GMATThread() {
 		//Mat inputBlob = blobFromImage(color_mat, inScaleFactor,
 		//	Size(inWidth, inHeight), meanVal, false); //Convert Mat to batch of images
 
-		GaussianBlur(color_mat, Gcolor_mat, Size(11, 11), 0);
-		GaussianBlur(depth_mat, Gdepth_mat, Size(3, 3), 0);
+		//GaussianBlur(color_mat, Gcolor_mat, Size(11, 11), 0);
+		//GaussianBlur(depth_mat, Gdepth_mat, Size(3, 3), 0);
 
-		//Gcolor_mat = color_mat;
-		//Gdepth_mat = depth_mat;
+		Gcolor_mat = color_mat;
+		Gdepth_mat = depth_mat;
 
 		// Crop both color and depth frames
 		Gcolor_mat = Gcolor_mat(crop);
@@ -501,64 +502,88 @@ void GetImage::convert_2_GMATThread() {
 
 
 		toHSV_lock.lock();
+		color_mat_queue.clear();
+		depth_mat_queue.clear();
 		color_mat_queue.push_back(Gcolor_mat);
 		depth_mat_queue.push_back(Gdepth_mat);
 		toHSV_lock.unlock();
-
+		imshow("GColor Image", Gcolor_mat);
+		key = (char)cv::waitKey(1);
 		auto end_timeGMATThread = clock();
 		cout << "time in GMATThread  " << 1000.000*(end_timeGMATThread - start_timeGMATThread) / CLOCKS_PER_SEC << endl;
 	}
 
 }
 
-bool GetImage::rgb_2_HSVThread() {
-	auto start_timeHSV = clock();
+void GetImage::rgb_2_HSVThread() {
+	while(true){
+		auto start_timeHSV = clock();
 
-	toHSV_lock.lock();
-	if (color_mat_queue.empty() || depth_mat_queue.empty()) {
+		toHSV_lock.lock();
+		if (color_mat_queue.empty() || depth_mat_queue.empty()) {
+			toHSV_lock.unlock();
+			continue;
+		}
+		Gcolor_matThread = color_mat_queue.back();
+		color_mat_queue.pop_back();
+		Gdepth_matThread = depth_mat_queue.back();
+		depth_mat_queue.pop_back();
 		toHSV_lock.unlock();
-		return false;
+
+		vector<Mat> hsvSplit;
+		cvtColor(Gcolor_matThread, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
+														   //?Ϊ????ȡ??ǲ??ͼ??ֱ??ͼ???�?Ҫ?HSV?ռ??
+
+		split(imgHSV, hsvSplit);
+		//cout << hsvSplit.size() << endl;
+
+		equalizeHist(hsvSplit[2], hsvSplit[2]);
+
+		merge(hsvSplit, imgHSV);
+
+		inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholdedThread); //Threshold the image
+
+																											//????? (ȥ??һЩ???
+		Mat element = getStructuringElement(MORPH_RECT, Size(5, 5));
+		morphologyEx(imgThresholdedThread, imgThresholdedThread, MORPH_OPEN, element);
+
+		//?ղ?? (?????Щ??ͨ?)
+		morphologyEx(imgThresholdedThread, imgThresholdedThread, MORPH_CLOSE, element);
+
+
+		hsv_2_contour_lock.lock();
+		imgThreshold_queue.clear();
+		imgThreshold_queue.push_back(imgThresholdedThread);
+		hsv_2_contour_lock.unlock();
+
+
+		imshow("Thresholded Image", imgThresholdedThread);
+		key = (char)cv::waitKey(1);
+
+		auto end_timeHSV = clock();
+		cout << "time in HSV  " << 1000.000*(end_timeHSV - start_timeHSV) / CLOCKS_PER_SEC << endl;
 	}
-	Gcolor_matThread = color_mat_queue.back(); 
-	color_mat_queue.pop_back();
-	Gdepth_matThread = depth_mat_queue.back();
-	depth_mat_queue.pop_back();
-	toHSV_lock.unlock();
-
-	vector<Mat> hsvSplit;
-	cvtColor(Gcolor_matThread, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
-													   //?Ϊ????ȡ??ǲ??ͼ??ֱ??ͼ???�?Ҫ?HSV?ռ??
-
-	split(imgHSV, hsvSplit);
-	//cout << hsvSplit.size() << endl;
-
-	equalizeHist(hsvSplit[2], hsvSplit[2]);
-
-	merge(hsvSplit, imgHSV);
-
-	inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
-
-																								  //????? (ȥ??һЩ???
-	Mat element = getStructuringElement(MORPH_RECT, Size(5, 5));
-	morphologyEx(imgThresholded, imgThresholded, MORPH_OPEN, element);
-
-	//?ղ?? (?????Щ??ͨ?)
-	morphologyEx(imgThresholded, imgThresholded, MORPH_CLOSE, element);
-	imshow("Thresholded Image", imgThresholded);
-	key = (char)cv::waitKey(1);
-	imshow("GColor Image", Gcolor_mat);
-	key = (char)cv::waitKey(1);
-	auto end_timeHSV = clock();
-	cout << "time in HSV  " << 1000.000*(end_timeHSV - start_timeHSV) / CLOCKS_PER_SEC << endl;
-	return true;
+	
 }
 
 
 
-void GetImage::find_ContourThread(bool KF) {
+bool GetImage::find_ContourThread(bool KF) {
 
 
 	auto start_timeContour = clock();
+
+
+	hsv_2_contour_lock.lock();
+
+	if (imgThreshold_queue.empty()) {
+		hsv_2_contour_lock.unlock();
+		return false;
+	}
+	imgThresholded = imgThreshold_queue.back();
+	imgThreshold_queue.pop_back();
+	hsv_2_contour_lock.unlock();
+
 
 	vector<vector<cv::Point>> contours;
 	cv::findContours(imgThresholded, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
