@@ -416,14 +416,14 @@ void GetImage::get_FrameThread() {
 	}
 }
 
-void GetImage::get_RGBD_dataThread() {
+bool GetImage::get_RGBD_dataThread() {
 
-	while (true) {	// Make sure the frames are spatially aligned
+	//while (true) {	// Make sure the frames are spatially aligned
 		auto start_timeRGB = clock();
 		framesetlock.lock();
 		if (frameset_queue.empty()) {
 			framesetlock.unlock();
-			continue;
+			return false;
 		}
 		data = frameset_queue.back();
 		frameset_queue.pop_back();
@@ -449,12 +449,12 @@ void GetImage::get_RGBD_dataThread() {
 
 		*depth_frame = temporal_filter.process(*depth_frame);
 
-		color_depth_lock.lock();
-		color_frame_queue.clear();
-		depth_frame_queue.clear();
-		color_frame_queue.push_back(*color_frame);
-		depth_frame_queue.push_back(*depth_frame);
-		color_depth_lock.unlock();
+		//color_depth_lock.lock();
+		//color_frame_queue.clear();
+		//depth_frame_queue.clear();
+		//color_frame_queue.push_back(*color_frame);
+		//depth_frame_queue.push_back(*depth_frame);
+		//color_depth_lock.unlock();
 
 		// If we only received new depth frame, 
 		// but the color did not update, continue
@@ -465,7 +465,7 @@ void GetImage::get_RGBD_dataThread() {
 		*/
 		auto end_timeRGB = clock();
 		cout << "time in RGB  " << 1000.000*(end_timeRGB - start_timeRGB) / CLOCKS_PER_SEC << endl;
-	}
+	//}
 
 }
 
@@ -478,7 +478,7 @@ void GetImage::convert_2_GMATThread() {
 		color_depth_lock.lock();
 		if (color_frame_queue.empty() || depth_frame_queue.empty()) {
 			color_depth_lock.unlock();
-			continue;
+			continue ;
 		}
 		auto color_mat = frame_to_mat(color_frame_queue.back());
 		color_frame_queue.pop_back();
@@ -501,12 +501,12 @@ void GetImage::convert_2_GMATThread() {
 		Gdepth_mat = Gdepth_mat(crop);
 
 
-		toHSV_lock.lock();
+		/*toHSV_lock.lock();
 		color_mat_queue.clear();
 		depth_mat_queue.clear();
 		color_mat_queue.push_back(Gcolor_mat);
 		depth_mat_queue.push_back(Gdepth_mat);
-		toHSV_lock.unlock();
+		toHSV_lock.unlock();*/
 		imshow("GColor Image", Gcolor_mat);
 		key = (char)cv::waitKey(1);
 		auto end_timeGMATThread = clock();

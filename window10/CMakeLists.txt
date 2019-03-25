@@ -57,7 +57,6 @@ file(GLOB SOURCE ${CMAKE_CURRENT_LIST_DIR}/InterceptionMultiThread.cpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/matrix2d.cpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/gotoposition.cpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/GetImage.cpp
-                 #${CMAKE_CURRENT_LIST_DIR}/include/zsplugin.cpp
                  )
 
 # 链接文件

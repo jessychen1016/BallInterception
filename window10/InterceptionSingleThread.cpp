@@ -36,7 +36,7 @@ int length_to_mid;
 double alpha=0;
 int full_time =0 ;
 KalmanFilterDir kalman_filter_dir;
-KalmanFilter kalman_filter;
+KalmanFilter1 kalman_filter;
 double depth_length_coefficient(double depth){
     
     double length;
@@ -324,7 +324,8 @@ int main(int argc, char** argv) try
 			
 		
 		}
-
+		auto end_time = clock();
+		cout << "time in a while1  " << 1000.000*(end_time - start_time) / CLOCKS_PER_SEC << endl;
 	}
 
 	ZActionModule::instance()->sendPacket(2, 0, 0, 0, true);

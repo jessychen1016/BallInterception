@@ -23,7 +23,7 @@ public:
 	void get_Frame();
 	void get_FrameThread();
 	bool get_RGBD_data();
-	void get_RGBD_dataThread();
+	bool get_RGBD_dataThread();
 	void convert_2_GMAT();
 	void convert_2_GMATThread();
 	void rgb_2_HSV();

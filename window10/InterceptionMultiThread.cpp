@@ -96,7 +96,6 @@ int main(int argc, char** argv) try
 	int this_pixal_to_bottom = 480;
 	int last_pixal_to_bottom = 480;
 	int pixal_to_bottom_change = 0;
-	auto startAfterEnd = clock();
     //action consts
     const double ACC_MAX = 900;
     const double VEL_MAX = 400;
@@ -106,16 +105,15 @@ int main(int argc, char** argv) try
 	// First while to aim at the ball
 
 	std::thread get_FrameThread(&GetImage::get_FrameThread, &getImage);
-	std::thread get_RGBD_dataThread(&GetImage::get_RGBD_dataThread, &getImage);
-	std::thread convert_2_GMATThread(&GetImage::convert_2_GMATThread, &getImage);
-	std::thread rgb_2_HSVThread(&GetImage::rgb_2_HSVThread, &getImage);
+	//std::thread get_RGBD_dataThread(&GetImage::get_RGBD_dataThread, &getImage);
+	//std::thread convert_2_GMATThread(&GetImage::convert_2_GMATThread, &getImage);
 
 	// First while to aim at the ball
 	while (cvGetWindowHandle(getImage.window_name))
 		// for(int i = 0; i<60 && cvGetWindowHandle(getImage.window_name) ; i++)
 	{
 
-		auto start_timewhile1 = clock();
+		auto start_time = clock();
 
 		//bool result = getImage.get_RGBD_dataThread();
 
@@ -124,9 +122,12 @@ int main(int argc, char** argv) try
 		//}
 
 
-		if (!getImage.find_ContourThread(false)) {
+		if (!getImage.get_RGBD_dataThread()) {
 			continue;
 		}
+		getImage.convert_2_GMAT();
+		getImage.rgb_2_HSV();
+		getImage.find_Contour(false);
 		
 		//if(!getImage.rgb_2_HSVThread()) continue;
 
@@ -173,9 +174,8 @@ int main(int argc, char** argv) try
 			
 		
 		}
-		auto end_timewhile1 = clock();
-		cout << "time in While1  " << 1000.000*(end_timewhile1 - startAfterEnd) / CLOCKS_PER_SEC << endl<< endl;
-		startAfterEnd = clock();
+		auto end_time = clock();
+		cout << "time in While1  " << 1000.000*(end_time - start_time) / CLOCKS_PER_SEC << endl<< endl;
 	}
 
 	ZActionModule::instance()->sendPacket(2, 0, 0, 0, true);
@@ -328,9 +328,8 @@ int main(int argc, char** argv) try
    
     return EXIT_SUCCESS;
 	get_FrameThread.join();
-	get_RGBD_dataThread.join();
-	convert_2_GMATThread.join();
-	rgb_2_HSVThread.join();
+	//get_RGBD_dataThread.join();
+	//convert_2_GMATThread.join();
 
 }
 catch (const rs2::error & e)
