@@ -9,6 +9,14 @@
 #include <thread>
 #include <mutex>
 #include <list>
+
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+#include <opencv2/core/core.hpp>
+#include <opencv2/core/ocl.hpp>
+#include <opencv2/tracking/tracker.hpp>
+#include <opencv2/opencv.hpp>
+
 #include "kalmanfilter.h"
 
 class GetImage{
@@ -25,13 +33,14 @@ public:
 	bool get_RGBD_data();
 	bool get_RGBD_dataThread();
 	void convert_2_GMAT();
-	void convert_2_GMATThread();
+	bool convert_2_GMATThread();
 	void rgb_2_HSV();
 	void rgb_2_HSVThread();
 	double depth_length_coefficient(double depth);
 	void find_Contour(bool KF = false);
 	bool find_ContourThread(bool KF = false);
 	void show_window();
+	bool tracking();
 
 
 	cv::Mat imgThresholded;
@@ -63,6 +72,10 @@ public:
 	cv::Moments moment;
 	char key;
 	int pixal_to_bottom = 480;
+	cv::Mat Gcolor_mat;
+	cv::Mat Gdepth_mat;
+	cv::Rect2d object;
+	cv::Ptr<cv::Tracker> tracker;
 
 
 private:
@@ -74,12 +87,10 @@ private:
 	rs2::frameset dataThread;
 	rs2::video_frame *color_frame;
 	rs2::depth_frame *depth_frame;
-	cv::Mat Gcolor_mat;
-	cv::Mat Gdepth_mat;
+
 	cv::Mat Gcolor_matThread;
 	cv::Mat Gdepth_matThread;
 	cv::Mat imgHSV;
-	cv::Rect object;
 	std::list<rs2::frameset> frameset_queue;
 	std::list<rs2::video_frame> color_frame_queue;
 	std::list<rs2::depth_frame> depth_frame_queue;

@@ -20,6 +20,7 @@ SET(INCLUDE_DIRS ${CMAKE_CURRENT_LIST_DIR}/include
 				 ${CMAKE_CURRENT_LIST_DIR}/samples
                  ${CMAKE_CURRENT_LIST_DIR}/third-party/glfw-imgui/include
                  ${CMAKE_CURRENT_LIST_DIR}/third-party/
+                 ${CMAKE_CURRENT_LIST_DIR}/third-party/pthread
 				 ${CMAKE_CURRENT_LIST_DIR}/third-party/opencv-3.4/include
 				 ${CMAKE_CURRENT_LIST_DIR}/third-party/opencv-3.4/include/opencv
 				 ${CMAKE_CURRENT_LIST_DIR}/third-party/opencv-3.4/modules/core/include
@@ -40,6 +41,8 @@ SET(INCLUDE_DIRS ${CMAKE_CURRENT_LIST_DIR}/include
 				 ${CMAKE_CURRENT_LIST_DIR}/third-party/opencv-3.4/modules/calib3d/include
 				 ${CMAKE_CURRENT_LIST_DIR}/third-party/opencv-3.4/modules/stitching/include
 				 ${CMAKE_CURRENT_LIST_DIR}/third-party/opencv-3.4/modules/videostab/include
+				 ${CMAKE_CURRENT_LIST_DIR}/third-party/opencv-3.4/modules/tracking/include
+
                  ${CMAKE_CURRENT_LIST_DIR}/include/actionmodule.h
                  ${CMAKE_CURRENT_LIST_DIR}/include/kalmanfilterdir.h
                  ${CMAKE_CURRENT_LIST_DIR}/include/kalmanfilter.h
@@ -50,7 +53,7 @@ SET(INCLUDE_DIRS ${CMAKE_CURRENT_LIST_DIR}/include
                  )
 
 # 源文件
-file(GLOB SOURCE ${CMAKE_CURRENT_LIST_DIR}/InterceptionMultiThread.cpp
+file(GLOB SOURCE ${CMAKE_CURRENT_LIST_DIR}/InterceptionMultiThread_Tracker.cpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/actionmodule.cpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/kalmanfilterdir.cpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/kalmanfilter.cpp
@@ -80,8 +83,11 @@ file(GLOB LINK_DIRS ${CMAKE_CURRENT_LIST_DIR}/lib/x64/realsense2.lib
 					${CMAKE_CURRENT_LIST_DIR}/lib/opencv_video341.lib
 					${CMAKE_CURRENT_LIST_DIR}/lib/opencv_videoio341.lib
 					${CMAKE_CURRENT_LIST_DIR}/lib/opencv_videostab341.lib
+					${CMAKE_CURRENT_LIST_DIR}/lib/opencv_tracking341.lib
 					${QT_LIB}/x64/Qt5Network.lib
 					${QT_LIB}/x64/Qt5Core.lib
+					${CMAKE_CURRENT_LIST_DIR}/lib/pthreadVC2.lib
+					${CMAKE_CURRENT_LIST_DIR}/lib/libpthreadGC2.a
 					)
 
 # 添加头文件

@@ -5,6 +5,8 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include <opencv2/core/core.hpp>
 #include <opencv2/dnn.hpp>
+#include <opencv2/core/ocl.hpp>
+#include <opencv2/tracking/tracker.hpp>
 #include <cmath>
 #include <omp.h>
 #include <fstream>
@@ -21,6 +23,8 @@ using namespace rs2;
 using namespace std;
 using namespace cv;
 using namespace cv::dnn;
+
+
 
 namespace {
 	int iLowH = 0;
@@ -43,6 +47,7 @@ GetImage::GetImage():color_frame(nullptr),depth_frame(nullptr){
     config = pipe.start();
 	load_JSON();
 	align_to = new rs2::align(RS2_STREAM_COLOR);
+	tracker = TrackerKCF::create();
 }
 
 GetImage::~GetImage(){
@@ -423,7 +428,7 @@ bool GetImage::get_RGBD_dataThread() {
 		framesetlock.lock();
 		if (frameset_queue.empty()) {
 			framesetlock.unlock();
-			return false;
+			return false ;
 		}
 		data = frameset_queue.back();
 		frameset_queue.pop_back();
@@ -470,15 +475,15 @@ bool GetImage::get_RGBD_dataThread() {
 }
 
 
-void GetImage::convert_2_GMATThread() {
-	while (true) {
+bool GetImage::convert_2_GMATThread() {
+	//while (true) {
 		auto start_timeGMATThread = clock();
 		// Convert RealSense frame to OpenCV matrix:
 
 		color_depth_lock.lock();
 		if (color_frame_queue.empty() || depth_frame_queue.empty()) {
 			color_depth_lock.unlock();
-			continue ;
+			return false ;
 		}
 		auto color_mat = frame_to_mat(color_frame_queue.back());
 		color_frame_queue.pop_back();
@@ -511,7 +516,7 @@ void GetImage::convert_2_GMATThread() {
 		key = (char)cv::waitKey(1);
 		auto end_timeGMATThread = clock();
 		cout << "time in GMATThread  " << 1000.000*(end_timeGMATThread - start_timeGMATThread) / CLOCKS_PER_SEC << endl;
-	}
+	//}
 
 }
 
@@ -645,3 +650,36 @@ bool GetImage::find_ContourThread(bool KF) {
 	auto end_timeContour = clock();
 	cout << "time in Contour  " << 1000.000*(end_timeContour - start_timeContour) / CLOCKS_PER_SEC << endl;
 }
+
+
+bool GetImage::tracking() {
+	//cout << "enter tracking" << endl;
+	auto starttracking = clock();
+	if (!get_RGBD_dataThread()) {
+		return false;
+		cout << "out of tracking" << endl;
+	}
+
+	auto color_mat = frame_to_mat(*color_frame);
+	auto depth_mat = frame_to_mat(*depth_frame);
+	Gcolor_mat = color_mat;
+	Gdepth_mat = depth_mat;
+	Gcolor_mat = Gcolor_mat(crop);
+	Gdepth_mat = Gdepth_mat(crop);
+	bool ok = tracker->update(Gcolor_mat, object);
+
+	length_to_mid = 100;
+	magic_distance = 100;
+	if (ok) {
+		rectangle(Gcolor_mat, object, Scalar(255, 0, 0), 2, 1);
+	}
+	else {
+
+	}
+	auto endoftrack = clock();
+	cout << "time in track  " << 1000.000*(endoftrack - starttracking) / CLOCKS_PER_SEC << endl;
+
+}
+
+
+
