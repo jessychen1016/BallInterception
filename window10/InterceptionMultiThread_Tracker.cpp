@@ -130,7 +130,7 @@ int main(int argc, char** argv) try
 
 
 		
-		if (count4while1 == 0) {
+		if (count4while1 <= 3) {
 			if (!getImage.get_RGBD_dataThread()) {
 				continue;
 			}
@@ -158,7 +158,9 @@ int main(int argc, char** argv) try
 
 
 		
-		length_to_mid = getImage.length_to_mid;
+		//length_to_mid = getImage.length_to_mid;
+
+		length_to_mid = 100;
 		cout << "length_to_mid " << length_to_mid <<endl;
 		cout << "Trying to locate the ball " << endl;
 		if (abs(length_to_mid) <= 2) {

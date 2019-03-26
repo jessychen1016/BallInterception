@@ -223,10 +223,10 @@ void GetImage::convert_2_GMAT() {
 	//Mat inputBlob = blobFromImage(color_mat, inScaleFactor,
 	//	Size(inWidth, inHeight), meanVal, false); //Convert Mat to batch of images
 	
-	//GaussianBlur(color_mat, Gcolor_mat, Size(11,11), 0);
-	//GaussianBlur(depth_mat, Gdepth_mat, Size(3,3), 0);
-	Gcolor_mat = color_mat;
-	Gdepth_mat = depth_mat;
+	GaussianBlur(color_mat, Gcolor_mat, Size(3,3), 0);
+	GaussianBlur(depth_mat, Gdepth_mat, Size(3,3), 0);
+	/*Gcolor_mat = color_mat;
+	Gdepth_mat = depth_mat;*/
 	// Crop both color and depth frames
 	Gcolor_mat = Gcolor_mat(crop);
 	Gdepth_mat = Gdepth_mat(crop);
@@ -662,8 +662,10 @@ bool GetImage::tracking() {
 
 	auto color_mat = frame_to_mat(*color_frame);
 	auto depth_mat = frame_to_mat(*depth_frame);
-	Gcolor_mat = color_mat;
-	Gdepth_mat = depth_mat;
+	GaussianBlur(color_mat, Gcolor_mat, Size(3,3), 0);
+	GaussianBlur(depth_mat, Gdepth_mat, Size(3,3), 0);
+	/*Gcolor_mat = color_mat;
+	Gdepth_mat = depth_mat;*/
 	Gcolor_mat = Gcolor_mat(crop);
 	Gdepth_mat = Gdepth_mat(crop);
 	bool ok = tracker->update(Gcolor_mat, object);
@@ -671,10 +673,15 @@ bool GetImage::tracking() {
 	length_to_mid = 100;
 	magic_distance = 100;
 	if (ok) {
+		cout << "Tracked" << endl;
 		rectangle(Gcolor_mat, object, Scalar(255, 0, 0), 2, 1);
 	}
 	else {
-
+		cout << "reDetection" << endl;
+		rgb_2_HSV();
+		find_Contour(false);
+		tracker->init(Gcolor_mat, object);
+		rectangle(Gcolor_mat, object, Scalar(255, 0, 0), 2, 1);
 	}
 	auto endoftrack = clock();
 	cout << "time in track  " << 1000.000*(endoftrack - starttracking) / CLOCKS_PER_SEC << endl;
