@@ -215,7 +215,6 @@ void GetImage::convert_2_GMAT() {
 
 	// Convert RealSense frame to OpenCV matrix:
 	auto color_mat = frame_to_mat(*color_frame);
-	// imshow ("image", color_mat);
 	
 	auto depth_mat = depth_frame_to_meters(pipe, *depth_frame);
 
@@ -258,8 +257,8 @@ void GetImage::rgb_2_HSV() {
 
 	//?ղ?? (?????Щ??ͨ?)
 	morphologyEx(imgThresholded, imgThresholded, MORPH_CLOSE, element);
-	imshow("Thresholded Image", imgThresholded);
-	key = (char)cv::waitKey(1);
+	//imshow("Thresholded Image", imgThresholded);
+	//key = (char)cv::waitKey(1);
 	auto end_timeHSV = clock();
 	cout << "time in HSV  " << 1000.000*(end_timeHSV - start_timeHSV) / CLOCKS_PER_SEC << endl;
 }
@@ -297,32 +296,69 @@ void GetImage::find_Contour(bool KF) {
 	moment = cv::moments(maxContour, true);
 
 	Scalar depth_m;
-	if (moment.m00 == 0) {
-		moment.m00 = 1;
-	}
-	Point moment_center(moment.m10 / moment.m00, moment.m01 / moment.m00);
-	depth_m = Gdepth_mat.at<double>((int)moment.m01 / moment.m00, (int)moment.m10 / moment.m00);
+	//if (moment.m00 == 0) {
+	//	moment.m00 = 1;
+	//}
+	//Point moment_center(moment.m10 / moment.m00, moment.m01 / moment.m00);
+	//depth_m = Gdepth_mat.at<double>((int)moment.m01 / moment.m00, (int)moment.m10 / moment.m00);
+	//magic_distance = depth_m[0] * 1.042 * 100;
+	//pixal_to_bottom = (480 - moment.m01 / moment.m00);
+
+
+	//if (KF) {
+	//	if (count_for_while2 == 0) {
+	//		length_to_mid = (moment.m10 / moment.m00 - 200)*depth_length_coefficient(magic_distance) / 320;
+	//		lenght_to_midline_OFFSET = length_to_mid;
+	//		length_to_mid = (moment.m10 / moment.m00 - 200)*depth_length_coefficient(magic_distance) / 320 - lenght_to_midline_OFFSET;
+	//		first_magic_distance = magic_distance;
+	//		magic_distance = kalman_filter.update(magic_distance, length_to_mid)(0, 0);
+	//		length_to_mid = kalman_filter.update(magic_distance, length_to_mid)(1, 0);
+	//		last_x_meter = magic_distance;
+	//		last_y_meter = abs(length_to_mid);
+	//		pixal_to_bottom = (480 - moment.m01 / moment.m00);
+	//		count_for_while2 += 1;
+	//		cout << "lenghtOFFSET = " << lenght_to_midline_OFFSET << endl;
+	//	}
+	//	else {
+	//		length_to_mid = (moment.m10 / moment.m00 - 200)*depth_length_coefficient(magic_distance) / 320 - lenght_to_midline_OFFSET;
+	//		//KalmanFilter
+	//		magic_distance = kalman_filter.update(magic_distance, length_to_mid)(0, 0);
+	//		length_to_mid = kalman_filter.update(magic_distance, length_to_mid)(1, 0);
+	//	}
+	//}
+	//else {
+	//	// calculate length to midline
+	//	length_to_mid = (moment.m10 / moment.m00 - 200)*depth_length_coefficient(magic_distance) / 320;
+
+	//}
+
+	//auto end_timeContour = clock();
+	//cout << "time in Contour  " << 1000.000*(end_timeContour - start_timeContour) / CLOCKS_PER_SEC << endl;
+
+	Point center = (object.br() + object.tl())*0.5;
+	depth_m = Gdepth_mat.at<double>( center.y , center.x );
 	magic_distance = depth_m[0] * 1.042 * 100;
-	pixal_to_bottom = (480 - moment.m01 / moment.m00);
+	pixal_to_bottom = (480 - center.y);
+
 
 
 
 	if (KF) {
 		if (count_for_while2 == 0) {
-			length_to_mid = (moment.m10 / moment.m00 - 200)*depth_length_coefficient(magic_distance) / 320;
+			length_to_mid = (center.x - 200)*depth_length_coefficient(magic_distance) / 320;
 			lenght_to_midline_OFFSET = length_to_mid;
-			length_to_mid = (moment.m10 / moment.m00 - 200)*depth_length_coefficient(magic_distance) / 320 - lenght_to_midline_OFFSET;
+			length_to_mid = (center.x - 200)*depth_length_coefficient(magic_distance) / 320 - lenght_to_midline_OFFSET;
 			first_magic_distance = magic_distance;
 			magic_distance = kalman_filter.update(magic_distance, length_to_mid)(0, 0);
 			length_to_mid = kalman_filter.update(magic_distance, length_to_mid)(1, 0);
 			last_x_meter = magic_distance;
 			last_y_meter = abs(length_to_mid);
-			pixal_to_bottom = (480 - moment.m01 / moment.m00);
+			pixal_to_bottom = (480 - center.y);
 			count_for_while2 += 1;
 			cout << "lenghtOFFSET = " << lenght_to_midline_OFFSET << endl;
 		}
 		else {
-			length_to_mid = (moment.m10 / moment.m00 - 200)*depth_length_coefficient(magic_distance) / 320 - lenght_to_midline_OFFSET;
+			length_to_mid = (center.x - 200)*depth_length_coefficient(magic_distance) / 320 - lenght_to_midline_OFFSET;
 			//KalmanFilter
 			magic_distance = kalman_filter.update(magic_distance, length_to_mid)(0, 0);
 			length_to_mid = kalman_filter.update(magic_distance, length_to_mid)(1, 0);
@@ -330,7 +366,7 @@ void GetImage::find_Contour(bool KF) {
 	}
 	else {
 		// calculate length to midline
-		length_to_mid = (moment.m10 / moment.m00 - 200)*depth_length_coefficient(magic_distance) / 320;
+		length_to_mid = (center.x - 200)*depth_length_coefficient(magic_distance) / 320;
 
 	}
 
@@ -514,6 +550,7 @@ bool GetImage::convert_2_GMATThread() {
 		toHSV_lock.unlock();*/
 		imshow("GColor Image", Gcolor_mat);
 		key = (char)cv::waitKey(1);
+
 		auto end_timeGMATThread = clock();
 		cout << "time in GMATThread  " << 1000.000*(end_timeGMATThread - start_timeGMATThread) / CLOCKS_PER_SEC << endl;
 	//}
@@ -609,7 +646,9 @@ bool GetImage::find_ContourThread(bool KF) {
 	object = maxRect;
 	moment = cv::moments(maxContour, true);
 
+
 	Scalar depth_m;
+
 	if (moment.m00 == 0) {
 		moment.m00 = 1;
 	}
@@ -617,6 +656,7 @@ bool GetImage::find_ContourThread(bool KF) {
 	depth_m = Gdepth_matThread.at<double>((int)moment.m01 / moment.m00, (int)moment.m10 / moment.m00);
 	magic_distance = depth_m[0] * 1.042 * 100;
 	pixal_to_bottom = (480 - moment.m01 / moment.m00);
+
 
 
 
@@ -652,7 +692,46 @@ bool GetImage::find_ContourThread(bool KF) {
 }
 
 
-bool GetImage::tracking() {
+void GetImage::find_Contour_Tracking(bool KF) {
+	cout << "enter findContour Tracking" << endl;
+
+	Point center = (object.br() + object.tl())*0.5;
+	Scalar depth_m = Gdepth_mat.at<double>((int)center.y, (int)center.x);
+
+	magic_distance = depth_m[0] * 1.042 * 100;
+	pixal_to_bottom = (480 - center.y);
+
+
+	if (KF) {
+		if (count_for_while2 == 0) {
+			length_to_mid = (center.x - 200)*depth_length_coefficient(magic_distance) / 320;
+			lenght_to_midline_OFFSET = length_to_mid;
+			length_to_mid = (center.x - 200)*depth_length_coefficient(magic_distance) / 320 - lenght_to_midline_OFFSET;
+			first_magic_distance = magic_distance;
+			magic_distance = kalman_filter.update(magic_distance, length_to_mid)(0, 0);
+			length_to_mid = kalman_filter.update(magic_distance, length_to_mid)(1, 0);
+			last_x_meter = magic_distance;
+			last_y_meter = abs(length_to_mid);
+			pixal_to_bottom = (480 - center.y);
+			count_for_while2 += 1;
+			cout << "lenghtOFFSET = " << lenght_to_midline_OFFSET << endl;
+		}
+		else {
+			length_to_mid = (center.x - 200)*depth_length_coefficient(magic_distance) / 320 - lenght_to_midline_OFFSET;
+			//KalmanFilter
+			magic_distance = kalman_filter.update(magic_distance, length_to_mid)(0, 0);
+			length_to_mid = kalman_filter.update(magic_distance, length_to_mid)(1, 0);
+		}
+	}
+	else {
+		// calculate length to midline
+		length_to_mid = (center.x - 200)*depth_length_coefficient(magic_distance) / 320;
+
+	}
+
+}
+
+bool GetImage::tracking(bool KF) {
 	//cout << "enter tracking" << endl;
 	auto starttracking = clock();
 	if (!get_RGBD_dataThread()) {
@@ -661,28 +740,32 @@ bool GetImage::tracking() {
 	}
 
 	auto color_mat = frame_to_mat(*color_frame);
-	auto depth_mat = frame_to_mat(*depth_frame);
+	auto depth_mat = depth_frame_to_meters(pipe, *depth_frame);
 	GaussianBlur(color_mat, Gcolor_mat, Size(3,3), 0);
 	GaussianBlur(depth_mat, Gdepth_mat, Size(3,3), 0);
-	/*Gcolor_mat = color_mat;
-	Gdepth_mat = depth_mat;*/
+	//Gcolor_mat = color_mat;
+	//Gdepth_mat = depth_mat;
 	Gcolor_mat = Gcolor_mat(crop);
 	Gdepth_mat = Gdepth_mat(crop);
+
 	bool ok = tracker->update(Gcolor_mat, object);
 
-	length_to_mid = 100;
-	magic_distance = 100;
 	if (ok) {
 		cout << "Tracked" << endl;
 		rectangle(Gcolor_mat, object, Scalar(255, 0, 0), 2, 1);
+		find_Contour_Tracking(KF);
 	}
 	else {
 		cout << "reDetection" << endl;
 		rgb_2_HSV();
-		find_Contour(false);
+		find_Contour(KF);
 		tracker->init(Gcolor_mat, object);
 		rectangle(Gcolor_mat, object, Scalar(255, 0, 0), 2, 1);
 	}
+	//imshow("TrackingDepth", Gdepth_mat);
+	//int k = waitKey(1);
+	//imshow("Tracking", Gcolor_mat);
+	//k = waitKey(1);
 	auto endoftrack = clock();
 	cout << "time in track  " << 1000.000*(endoftrack - starttracking) / CLOCKS_PER_SEC << endl;
 

@@ -38,9 +38,10 @@ public:
 	void rgb_2_HSVThread();
 	double depth_length_coefficient(double depth);
 	void find_Contour(bool KF = false);
+	void find_Contour_Tracking(bool KF = false);
 	bool find_ContourThread(bool KF = false);
 	void show_window();
-	bool tracking();
+	bool tracking(bool KF = false);
 
 
 	cv::Mat imgThresholded;

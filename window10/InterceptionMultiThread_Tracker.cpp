@@ -112,7 +112,7 @@ int main(int argc, char** argv) try
 	// First while to aim at the ball
 
 	std::thread get_FrameThread(&GetImage::get_FrameThread, &getImage);
-	std::thread get_RGBD_dataThread(&GetImage::get_RGBD_dataThread, &getImage);
+	//std::thread get_RGBD_dataThread(&GetImage::get_RGBD_dataThread, &getImage);
 	//std::thread convert_2_GMATThread(&GetImage::convert_2_GMATThread, &getImage);
 
 	// First while to aim at the ball
@@ -138,29 +138,25 @@ int main(int argc, char** argv) try
 			getImage.rgb_2_HSV();
 			getImage.find_Contour(false);
 			rectangle(getImage.Gcolor_mat, getImage.object, Scalar(255, 0, 0), 2, 1);
-			imshow("Tracking", getImage.Gcolor_mat);
-			int k = waitKey(1);
+			//imshow("Tracking", getImage.Gcolor_mat);
+			//int k = waitKey(1);
+			//imshow("TrackingDepth", getImage.Gdepth_mat);
+			//k = waitKey(1);
 			getImage.tracker->init(getImage.Gcolor_mat, getImage.object);
 			//std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 			count4while1 += 1;
 			continue;
 		}
 
-		if (!getImage.tracking()) {
-			imshow("Tracking", getImage.Gcolor_mat);
-			int k = waitKey(1);
+		if (!getImage.tracking(false)) {
 			continue;
 		}
 
-		//if(!getImage.rgb_2_HSVThread()) continue;
 
-		//getImage.find_ContourThread(false);
-
+		length_to_mid = getImage.length_to_mid;
 
 		
-		//length_to_mid = getImage.length_to_mid;
 
-		length_to_mid = 100;
 		cout << "length_to_mid " << length_to_mid <<endl;
 		cout << "Trying to locate the ball " << endl;
 		if (abs(length_to_mid) <= 2) {
@@ -217,24 +213,36 @@ int main(int argc, char** argv) try
     {
 
         auto start_time = clock();
-		//getImage.get_Frame();
-		bool result = getImage.get_RGBD_data();
 
-		if (!result) {
+
+		if (count4while2 <= 2) {
+			if (!getImage.get_RGBD_dataThread()) {
+				continue;
+			}
+			getImage.convert_2_GMAT();
+			getImage.rgb_2_HSV();
+			getImage.find_Contour(false);
+			rectangle(getImage.Gcolor_mat, getImage.object, Scalar(255, 0, 0), 2, 1);
+			//imshow("Tracking", getImage.Gcolor_mat);
+			//int k = waitKey(1);
+			//imshow("TrackingDepth", getImage.Gdepth_mat);
+			//k = waitKey(1);
+			getImage.tracker->init(getImage.Gcolor_mat, getImage.object);
+			//std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+			count4while2 += 1;
 			continue;
 		}
-
-
-		getImage.convert_2_GMAT();
-		getImage.rgb_2_HSV();
-		getImage.find_Contour(true);
+		//getImage.get_Frame();
+		if (!getImage.tracking(true)) {
+			continue;
+		}
 		//getImage.show_window();
 
         this_x_meter = getImage.magic_distance;
         this_y_meter = abs(getImage.length_to_mid);
 		this_pixal_to_bottom = getImage.pixal_to_bottom;
         auto end_time = clock();
-		if (count4while2 == 0) {
+		if (count4while2 == 4) {
 			/*x_vel = (this_x_meter - getImage.last_x_meter) / (end_time - start_time)*CLOCKS_PER_SEC;
 			y_vel = (last_y_meter - getImage.this_y_meter) / (end_time - start_time)*CLOCKS_PER_SEC;
 			velocity = sqrt(y_vel*y_vel + x_vel*x_vel);*/
@@ -353,7 +361,7 @@ int main(int argc, char** argv) try
    
     return EXIT_SUCCESS;
 	get_FrameThread.join();
-	get_RGBD_dataThread.join();
+	//get_RGBD_dataThread.join();
 	//convert_2_GMATThread.join();
 
 }
