@@ -138,10 +138,10 @@ int main(int argc, char** argv) try
 			getImage.rgb_2_HSV();
 			getImage.find_Contour(false);
 			rectangle(getImage.Gcolor_mat, getImage.object, Scalar(255, 0, 0), 2, 1);
-			//imshow("Tracking", getImage.Gcolor_mat);
-			//int k = waitKey(1);
-			//imshow("TrackingDepth", getImage.Gdepth_mat);
-			//k = waitKey(1);
+			imshow("TrackingDepth", getImage.Gdepth_mat);
+			int k = waitKey(1);
+			imshow("Tracking", getImage.Gcolor_mat);
+			k = waitKey(1);
 			getImage.tracker->init(getImage.Gcolor_mat, getImage.object);
 			//std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 			count4while1 += 1;
@@ -151,10 +151,13 @@ int main(int argc, char** argv) try
 		if (!getImage.tracking(false)) {
 			continue;
 		}
-
+		imshow("TrackingDepth", getImage.Gdepth_mat);
+		int k = waitKey(1);
+		imshow("Tracking", getImage.Gcolor_mat);
+		k = waitKey(1);
 
 		length_to_mid = getImage.length_to_mid;
-
+		length_to_mid = 100;
 		
 
 		cout << "length_to_mid " << length_to_mid <<endl;
@@ -223,10 +226,10 @@ int main(int argc, char** argv) try
 			getImage.rgb_2_HSV();
 			getImage.find_Contour(false);
 			rectangle(getImage.Gcolor_mat, getImage.object, Scalar(255, 0, 0), 2, 1);
-			//imshow("Tracking", getImage.Gcolor_mat);
-			//int k = waitKey(1);
-			//imshow("TrackingDepth", getImage.Gdepth_mat);
-			//k = waitKey(1);
+			imshow("TrackingDepth", getImage.Gdepth_mat);
+			int k = waitKey(1);
+			imshow("Tracking", getImage.Gcolor_mat);
+			k = waitKey(1);
 			getImage.tracker->init(getImage.Gcolor_mat, getImage.object);
 			//std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 			count4while2 += 1;
@@ -236,7 +239,10 @@ int main(int argc, char** argv) try
 		if (!getImage.tracking(true)) {
 			continue;
 		}
-		//getImage.show_window();
+		imshow("TrackingDepth", getImage.Gdepth_mat);
+		int k = waitKey(1);
+		imshow("Tracking", getImage.Gcolor_mat);
+		k = waitKey(1);
 
         this_x_meter = getImage.magic_distance;
         this_y_meter = abs(getImage.length_to_mid);

@@ -914,11 +914,11 @@ namespace cv{
       wrap_kernel=false;
       desc_npca = GRAY;
       desc_pca = CN;
-
       //feature compression
       compress_feature=true;
       compressed_size=2;
       pca_learning_rate=0.15f;
+
   }
 
   void TrackerKCF::Params::read( const cv::FileNode& fn ){
