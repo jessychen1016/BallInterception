@@ -233,9 +233,9 @@ namespace cv{
     // add padding to the roi
     roi.x-=roi.width/2;
     roi.y-=roi.height/2;
-    roi.width*=2;
-    roi.height*=2;
-
+    roi.width*=10;
+    roi.height*=10;
+    cout<<"in tracker.cpp "<<endl;
     // initialize the hann window filter
     createHanningWindow(hann, roi.size(), CV_32F);
 

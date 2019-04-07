@@ -48,6 +48,20 @@ GetImage::GetImage():color_frame(nullptr),depth_frame(nullptr){
 	load_JSON();
 	align_to = new rs2::align(RS2_STREAM_COLOR);
 	tracker = TrackerKCF::create();
+	//parameters.detect_thresh = 0.5f;
+	//parameters.sigma = 0.5f;
+	//parameters.lambda = 0.0001f;
+	//parameters.interp_factor = 0.08f;
+	//parameters.output_sigma_factor = 1.0f / 32.0f;
+	//parameters.resize = true;
+	//parameters.max_patch_size = 90 * 90;
+	//parameters.split_coeff = false;
+	//parameters.wrap_kernel = true;
+	//parameters.desc_npca = TrackerKCF::CN;
+	//parameters.desc_pca = TrackerKCF::GRAY;
+	//parameters.compress_feature = false;
+	//parameters.compressed_size = 3;
+	//parameters.pca_learning_rate = 0.02f;
 }
 
 GetImage::~GetImage(){

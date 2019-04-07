@@ -77,6 +77,7 @@ public:
 	cv::Mat Gdepth_mat;
 	cv::Rect2d object;
 	cv::Ptr<cv::Tracker> tracker;
+	cv::TrackerKCF::Params parameters;
 
 
 private:
