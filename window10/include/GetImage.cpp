@@ -772,7 +772,7 @@ bool GetImage::tracking(bool KF) {
 	else {
 
 		cout << "reDetection" << endl;
-		return false;
+		// return false;
 		rgb_2_HSV();
 		find_Contour(KF);
 		tracker->init(Gcolor_mat, object);

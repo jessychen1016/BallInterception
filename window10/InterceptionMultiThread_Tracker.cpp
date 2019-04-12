@@ -151,13 +151,13 @@ int main(int argc, char** argv) try
 		if (!getImage.tracking(false)) {
 			continue;
 		}
-		imshow("TrackingDepth", getImage.Gdepth_mat);
-		int k = waitKey(1);
-		imshow("Tracking", getImage.Gcolor_mat);
-		k = waitKey(1);
+		//imshow("TrackingDepth", getImage.Gdepth_mat);
+		//int k = waitKey(1);
+		//imshow("Tracking", getImage.Gcolor_mat);
+		//k = waitKey(1);
 
 		length_to_mid = getImage.length_to_mid;
-		length_to_mid = 100;
+		// length_to_mid = 100;
 		
 
 		cout << "length_to_mid " << length_to_mid <<endl;
@@ -239,9 +239,9 @@ int main(int argc, char** argv) try
 		if (!getImage.tracking(true)) {
 			continue;
 		}
-		imshow("TrackingDepth", getImage.Gdepth_mat);
+		// imshow("TrackingDepth", getImage.Gdepth_mat);
 		int k = waitKey(1);
-		imshow("Tracking", getImage.Gcolor_mat);
+		// imshow("Tracking", getImage.Gcolor_mat);
 		k = waitKey(1);
 
         this_x_meter = getImage.magic_distance;
