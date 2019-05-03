@@ -6,3 +6,4 @@ figures need to adjust
 2.distance and length function
 Gauss
 midline location
+ 
