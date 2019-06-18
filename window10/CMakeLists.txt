@@ -49,6 +49,9 @@ SET(INCLUDE_DIRS ${CMAKE_CURRENT_LIST_DIR}/include
                  ${CMAKE_CURRENT_LIST_DIR}/include/singleton.hpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/matrix2d.h
                  ${CMAKE_CURRENT_LIST_DIR}/include/GetImage.h
+                 ${CMAKE_CURRENT_LIST_DIR}/include/RefereeBox.h
+                 ${CMAKE_CURRENT_LIST_DIR}/include/referee.pb.h
+                 ${CMAKE_CURRENT_LIST_DIR}/include/game_event.pb.h
                  ${QT_INCLUDE}
                  )
 
@@ -60,6 +63,9 @@ file(GLOB SOURCE ${CMAKE_CURRENT_LIST_DIR}/InterceptionMultiThread_Tracker.cpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/matrix2d.cpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/gotoposition.cpp
                  ${CMAKE_CURRENT_LIST_DIR}/include/GetImage.cpp
+                 ${CMAKE_CURRENT_LIST_DIR}/include/RefereeBox.cpp
+                 ${CMAKE_CURRENT_LIST_DIR}/include/referee.pb.cc
+                 ${CMAKE_CURRENT_LIST_DIR}/include/game_event.pb.cc
                  )
 
 # 链接文件
@@ -84,6 +90,8 @@ file(GLOB LINK_DIRS ${CMAKE_CURRENT_LIST_DIR}/lib/x64/realsense2.lib
 					${CMAKE_CURRENT_LIST_DIR}/lib/opencv_videoio341.lib
 					${CMAKE_CURRENT_LIST_DIR}/lib/opencv_videostab341.lib
 					${CMAKE_CURRENT_LIST_DIR}/lib/opencv_tracking341.lib
+					${CMAKE_CURRENT_LIST_DIR}/lib/protobuf/libprotobuf.lib
+					${CMAKE_CURRENT_LIST_DIR}/lib/protobuf/libprotobufD.lib
 					${QT_LIB}/x64/Qt5Network.lib
 					${QT_LIB}/x64/Qt5Core.lib
 					${CMAKE_CURRENT_LIST_DIR}/lib/pthreadVC2.lib

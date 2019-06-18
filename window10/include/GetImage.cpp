@@ -395,7 +395,7 @@ void GetImage::show_window() {
 	String conf(ss.str());
 	// distance[i]=magic_distance;
 
-	rectangle(Gcolor_mat, object, Scalar(0, 255, 0));
+	rectangle(Gcolor_mat, object, Scalar(0, 0, 255));
 	int baseLine = 0;
 	Size labelSize = getTextSize(ss.str(), FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseLine);
 	auto center = (object.br() + object.tl())*0.5;

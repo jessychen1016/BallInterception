@@ -28,6 +28,7 @@
 #include "actionmodule.h"
 #include "kalmanfilterdir.h"
 #include "kalmanfilter.h"
+#include "RefereeBox.h"
 #define MAX_THREADS 8
 
 
@@ -43,7 +44,7 @@ double alpha=0;
 int full_time =0 ;
 KalmanFilterDir kalman_filter_dir;
 KalmanFilter1 kalman_filter;
-
+RefereeBox RB;
 
     using namespace cv;
     using namespace rs2;
@@ -52,7 +53,6 @@ KalmanFilter1 kalman_filter;
 
 int main(int argc, char** argv) try
 {
-
 
 // # endif
     ZActionModule::instance();
@@ -106,6 +106,9 @@ int main(int argc, char** argv) try
 	ofstream debug("../build/velocity.txt");
 
 	
+	cout << "waiting for Command" << endl;
+	RB.BindJoint();
+	RB.ifForceStart();
 
 
 	
